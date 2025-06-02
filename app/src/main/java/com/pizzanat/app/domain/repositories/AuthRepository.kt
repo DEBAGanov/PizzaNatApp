@@ -27,7 +27,7 @@ interface AuthRepository {
      * Вход в систему
      */
     suspend fun login(
-        email: String,
+        username: String,
         password: String
     ): Result<AuthResponse>
     

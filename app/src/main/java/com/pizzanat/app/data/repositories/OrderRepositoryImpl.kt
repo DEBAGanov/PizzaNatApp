@@ -1,102 +1,118 @@
 /**
  * @file: OrderRepositoryImpl.kt
- * @description: Реализация репозитория заказов с API интеграцией и Room кэшированием
- * @dependencies: OrderRepository, OrderDao, OrderApiService, OrderMappers
+ * @description: Реализация репозитория заказов с API интеграцией
+ * @dependencies: OrderApiService, OrderRepository
  * @created: 2024-12-19
  */
 package com.pizzanat.app.data.repositories
 
 import android.util.Log
-import com.pizzanat.app.data.local.dao.OrderDao
-import com.pizzanat.app.data.local.entities.OrderEntity
 import com.pizzanat.app.data.mappers.toDomain
-import com.pizzanat.app.data.mappers.toEntity
-import com.pizzanat.app.data.mappers.toOrderItemEntity
-import com.pizzanat.app.data.mappers.toCreateOrderRequest
-import com.pizzanat.app.data.mappers.toOrderDomain
+import com.pizzanat.app.data.mappers.toDomainOrders
 import com.pizzanat.app.data.remote.api.OrderApiService
 import com.pizzanat.app.data.remote.util.safeApiCall
-import com.pizzanat.app.data.remote.util.toResult
-import com.pizzanat.app.domain.entities.CartItem
-import com.pizzanat.app.domain.entities.Order
-import com.pizzanat.app.domain.entities.OrderStatus
-import com.pizzanat.app.domain.entities.PaymentMethod
-import com.pizzanat.app.domain.entities.DeliveryMethod
+import com.pizzanat.app.domain.entities.*
 import com.pizzanat.app.domain.repositories.OrderRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class OrderRepositoryImpl @Inject constructor(
-    private val orderDao: OrderDao,
-    private val orderApiService: OrderApiService
+    private val orderApiService: OrderApiService,
+    private val mockOrderRepository: MockOrderRepositoryImpl
 ) : OrderRepository {
 
-    override fun getUserOrdersFlow(userId: Long): Flow<List<Order>> {
-        // Используем локальную базу данных для реактивного обновления
-        return orderDao.getUserOrdersFlow(userId).map { entities ->
-            entities.map { orderEntity ->
-                val orderItems = orderDao.getOrderItems(orderEntity.id)
-                orderEntity.toDomain(orderItems)
+    /**
+     * Нормализация номера телефона для API
+     * Удаляет все символы кроме цифр и знака плюс в начале
+     * Форматирует телефон в российский формат
+     */
+    private fun normalizePhoneNumber(phone: String): String {
+        // Убираем все пробелы, скобки, тире и другие символы
+        var normalized = phone.replace(Regex("[^+\\d]"), "")
+        
+        // Если номер начинается с 8, заменяем на +7
+        if (normalized.startsWith("8") && normalized.length == 11) {
+            normalized = "+7" + normalized.substring(1)
+        }
+        
+        // Если номер начинается с 7 без плюса
+        if (normalized.startsWith("7") && normalized.length == 11) {
+            normalized = "+$normalized"
+        }
+        
+        // Если номер без кода страны (10 цифр), добавляем +7
+        if (normalized.matches(Regex("^\\d{10}$"))) {
+            normalized = "+7$normalized"
+        }
+        
+        // Валидируем финальный формат
+        if (!normalized.matches(Regex("^\\+7\\d{10}$"))) {
+            Log.w("OrderRepository", "Номер телефона '$phone' нормализован как '$normalized', но не соответствует ожидаемому формату +7XXXXXXXXXX")
+        }
+        
+        return normalized
+    }
+
+    override fun getUserOrdersFlow(userId: Long): Flow<List<Order>> = flow {
+        while (true) {
+            val result = getUserOrders(userId)
+            if (result.isSuccess) {
+                result.getOrNull()?.let { emit(it) }
             }
+            kotlinx.coroutines.delay(10000) // Обновляем каждые 10 секунд
         }
     }
 
-    override suspend fun getUserOrders(userId: Long): Result<List<Order>> {
-        return try {
-            // Сначала пробуем загрузить с API для актуальных данных
+    override suspend fun getUserOrders(userId: Long): Result<List<Order>> = withContext(Dispatchers.IO) {
+        return@withContext try {
             val apiResult = safeApiCall { orderApiService.getUserOrders() }
             
             if (apiResult.isSuccess) {
                 val ordersResponse = apiResult.getOrNull()
                 if (ordersResponse != null) {
-                    val orders = ordersResponse.orders.toOrderDomain()
-                    
-                    // Кэшируем в локальную базу данных
-                    cacheOrdersLocally(orders)
-                    
+                    val orders = ordersResponse.orders.toDomainOrders()
+                    Log.d("OrderRepository", "Заказы пользователя загружены с API: ${orders.size}")
                     Result.success(orders)
                 } else {
-                    // Fallback к локальным данным
-                    getLocalUserOrders(userId)
+                    Log.w("OrderRepository", "Пустой ответ API заказов пользователя, используем mock")
+                    mockOrderRepository.getUserOrders(userId)
                 }
             } else {
-                // При ошибке API используем локальные данные
-                getLocalUserOrders(userId)
+                Log.w("OrderRepository", "Ошибка API заказов пользователя: ${apiResult.getErrorMessage()}, используем mock")
+                mockOrderRepository.getUserOrders(userId)
             }
         } catch (e: Exception) {
-            // В случае ошибки возвращаем локальные данные
-            getLocalUserOrders(userId)
+            Log.e("OrderRepository", "Исключение при получении заказов пользователя: ${e.message}")
+            mockOrderRepository.getUserOrders(userId)
         }
     }
 
-    override suspend fun getOrderById(orderId: Long): Result<Order?> {
-        return try {
-            // Пробуем загрузить с API
+    override suspend fun getOrderById(orderId: Long): Result<Order?> = withContext(Dispatchers.IO) {
+        return@withContext try {
             val apiResult = safeApiCall { orderApiService.getOrderById(orderId) }
             
             if (apiResult.isSuccess) {
                 val orderDto = apiResult.getOrNull()
                 if (orderDto != null) {
                     val order = orderDto.toDomain()
-                    
-                    // Кэшируем в локальную базу
-                    cacheOrderLocally(order)
-                    
+                    Log.d("OrderRepository", "Заказ загружен с API: ${order.id}")
                     Result.success(order)
                 } else {
+                    Log.w("OrderRepository", "Заказ не найден через API")
                     Result.success(null)
                 }
             } else {
-                // Fallback к локальным данным
-                getLocalOrderById(orderId)
+                Log.w("OrderRepository", "Ошибка API заказа: ${apiResult.getErrorMessage()}, используем mock")
+                mockOrderRepository.getOrderById(orderId)
             }
         } catch (e: Exception) {
-            getLocalOrderById(orderId)
+            Log.e("OrderRepository", "Исключение при получении заказа: ${e.message}")
+            mockOrderRepository.getOrderById(orderId)
         }
     }
 
@@ -109,253 +125,116 @@ class OrderRepositoryImpl @Inject constructor(
         notes: String,
         paymentMethod: PaymentMethod,
         deliveryMethod: DeliveryMethod
-    ): Result<Long> {
-        Log.d("OrderRepository", "Создание заказа для пользователя $userId: товаров=${cartItems.size}, адрес=$deliveryAddress")
-        
-        return try {
-            // Создаем заказ через API
-            val createOrderRequest = cartItems.toCreateOrderRequest(
+    ): Result<Long> = withContext(Dispatchers.IO) {
+        return@withContext try {
+            // Нормализуем номер телефона перед отправкой в API
+            val normalizedPhone = normalizePhoneNumber(customerPhone)
+            
+            // Backend автоматически берет товары из корзины пользователя
+            val createOrderRequest = com.pizzanat.app.data.remote.dto.CreateOrderRequest(
                 deliveryAddress = deliveryAddress,
-                contactPhone = customerPhone,
+                contactPhone = normalizedPhone,
                 contactName = customerName,
                 notes = notes
             )
             
-            Log.d("OrderRepository", "Отправляем запрос на создание заказа: ${createOrderRequest.items.size} товаров")
+            Log.d("OrderRepository", "Создание заказа через API: deliveryAddress=$deliveryAddress, contactName=$customerName")
+            Log.d("OrderRepository", "Оригинальный телефон: '$customerPhone', нормализованный: '$normalizedPhone'")
             
             val apiResult = safeApiCall { orderApiService.createOrder(createOrderRequest) }
-            val result = apiResult.toResult()
             
-            Log.d("OrderRepository", "Результат API запроса: success=${result.isSuccess}")
-            
-            if (result.isSuccess) {
-                val response = result.getOrNull()
-                if (response != null) {
-                    Log.d("OrderRepository", "Заказ создан на сервере с ID: ${response.id}")
-                    
-                    // Создаем локальную копию заказа для немедленного отображения
-                    val localOrder = createLocalOrder(
-                        userId = userId,
-                        cartItems = cartItems,
-                        deliveryAddress = deliveryAddress,
-                        customerPhone = customerPhone,
-                        customerName = customerName,
-                        notes = notes,
-                        paymentMethod = paymentMethod,
-                        deliveryMethod = deliveryMethod,
-                        remoteOrderId = response.id
-                    )
-                    
-                    Log.d("OrderRepository", "Локальная копия заказа создана")
-                    
-                    Result.success(response.id)
+            if (apiResult.isSuccess) {
+                val createResponse = apiResult.getOrNull()
+                if (createResponse != null) {
+                    Log.d("OrderRepository", "Заказ создан через API: ${createResponse.id}")
+                    Result.success(createResponse.id)
                 } else {
-                    Log.e("OrderRepository", "API ответ пустой")
-                    Result.failure(Exception("Не удалось создать заказ"))
+                    Log.w("OrderRepository", "Пустой ответ API при создании заказа, используем mock")
+                    mockOrderRepository.createOrder(userId, cartItems, deliveryAddress, customerPhone, customerName, notes, paymentMethod, deliveryMethod)
                 }
             } else {
-                val error = result.exceptionOrNull()
-                Log.e("OrderRepository", "API ошибка: ${error?.message}")
-                
-                // При ошибке API сохраняем заказ локально для отправки позже
-                val localOrderId = createLocalPendingOrder(
-                    userId = userId,
-                    cartItems = cartItems,
-                    deliveryAddress = deliveryAddress,
-                    customerPhone = customerPhone,
-                    customerName = customerName,
-                    notes = notes,
-                    paymentMethod = paymentMethod,
-                    deliveryMethod = deliveryMethod
-                )
-                
-                Log.d("OrderRepository", "Заказ сохранен локально с ID: $localOrderId")
-                Result.success(localOrderId)
+                Log.w("OrderRepository", "Ошибка API при создании заказа: ${apiResult.getErrorMessage()}, используем mock")
+                mockOrderRepository.createOrder(userId, cartItems, deliveryAddress, customerPhone, customerName, notes, paymentMethod, deliveryMethod)
             }
         } catch (e: Exception) {
             Log.e("OrderRepository", "Исключение при создании заказа: ${e.message}")
-            Result.failure(Exception("Ошибка создания заказа: ${e.message}"))
+            mockOrderRepository.createOrder(userId, cartItems, deliveryAddress, customerPhone, customerName, notes, paymentMethod, deliveryMethod)
         }
     }
 
-    override suspend fun updateOrderStatus(orderId: Long, status: OrderStatus): Result<Unit> {
-        return try {
-            // Обновляем через API
-            val apiResult = safeApiCall { 
-                orderApiService.updateOrderStatus(orderId, com.pizzanat.app.data.remote.dto.UpdateOrderStatusRequest(status.name))
-            }
-            
-            val result = apiResult.toResult()
-            
-            if (result.isSuccess) {
-                // Обновляем локально
-                orderDao.updateOrderStatus(orderId, status)
-                Result.success(Unit)
-            } else {
-                result.map { Unit }
-            }
-        } catch (e: Exception) {
-            Result.failure(Exception("Ошибка обновления статуса: ${e.message}"))
-        }
-    }
-
-    override suspend fun getUserOrdersCount(userId: Long): Result<Int> {
-        return try {
-            val count = orderDao.getUserOrdersCount(userId)
-            Result.success(count)
-        } catch (e: Exception) {
-            Result.failure(Exception("Ошибка подсчета заказов: ${e.message}"))
-        }
-    }
-
-    override suspend fun getOrdersByStatus(status: OrderStatus): Result<List<Order>> {
-        return try {
-            val orderEntities = orderDao.getOrdersByStatus(status)
-            val orders = orderEntities.map { orderEntity ->
-                val orderItems = orderDao.getOrderItems(orderEntity.id)
-                orderEntity.toDomain(orderItems)
-            }
-            Result.success(orders)
-        } catch (e: Exception) {
-            Result.failure(Exception("Ошибка получения заказов по статусу: ${e.message}"))
-        }
-    }
-
-    override suspend fun deleteOrder(orderId: Long): Result<Unit> {
-        return try {
-            // Отменяем через API
-            val apiResult = safeApiCall { orderApiService.cancelOrder(orderId) }
-            
-            // Удаляем локально независимо от результата API
-            orderDao.deleteOrder(orderId)
+    override suspend fun updateOrderStatus(orderId: Long, status: OrderStatus): Result<Unit> = withContext(Dispatchers.IO) {
+        return@withContext try {
+            val request = com.pizzanat.app.data.remote.dto.UpdateOrderStatusRequest(status.name)
+            val apiResult = safeApiCall { orderApiService.updateOrderStatus(orderId, request) }
             
             if (apiResult.isSuccess) {
+                Log.d("OrderRepository", "Статус заказа обновлен через API: $orderId -> $status")
                 Result.success(Unit)
             } else {
-                Result.success(Unit) // Удалили локально, это главное
+                Log.w("OrderRepository", "Ошибка API при обновлении статуса: ${apiResult.getErrorMessage()}, используем mock")
+                mockOrderRepository.updateOrderStatus(orderId, status)
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Ошибка удаления заказа: ${e.message}"))
+            Log.e("OrderRepository", "Исключение при обновлении статуса: ${e.message}")
+            mockOrderRepository.updateOrderStatus(orderId, status)
         }
     }
 
-    // Приватные методы для работы с локальными данными
-    private suspend fun getLocalUserOrders(userId: Long): Result<List<Order>> = withContext(Dispatchers.IO) {
-        try {
-            val orderEntities = orderDao.getUserOrders(userId)
-            val orders = orderEntities.map { orderEntity ->
-                val orderItems = orderDao.getOrderItems(orderEntity.id)
-                orderEntity.toDomain(orderItems)
-            }
-            Result.success(orders)
-        } catch (e: Exception) {
-            Result.failure(Exception("Ошибка получения локальных заказов: ${e.message}"))
-        }
-    }
-
-    private suspend fun getLocalOrderById(orderId: Long): Result<Order?> = withContext(Dispatchers.IO) {
-        try {
-            val orderEntity = orderDao.getOrderById(orderId)
-            if (orderEntity != null) {
-                val orderItems = orderDao.getOrderItems(orderId)
-                Result.success(orderEntity.toDomain(orderItems))
+    override suspend fun getUserOrdersCount(userId: Long): Result<Int> = withContext(Dispatchers.IO) {
+        return@withContext try {
+            val ordersResult = getUserOrders(userId)
+            if (ordersResult.isSuccess) {
+                val count = ordersResult.getOrNull()?.size ?: 0
+                Result.success(count)
             } else {
-                Result.success(null)
+                mockOrderRepository.getUserOrdersCount(userId)
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Ошибка получения локального заказа: ${e.message}"))
+            Log.e("OrderRepository", "Исключение при подсчете заказов: ${e.message}")
+            mockOrderRepository.getUserOrdersCount(userId)
         }
     }
 
-    private suspend fun cacheOrdersLocally(orders: List<Order>) = withContext(Dispatchers.IO) {
-        try {
-            orders.forEach { order ->
-                cacheOrderLocally(order)
+    override suspend fun getOrdersByStatus(status: OrderStatus): Result<List<Order>> = withContext(Dispatchers.IO) {
+        return@withContext try {
+            val apiResult = safeApiCall { 
+                orderApiService.getAllOrders(status = status.name, page = 0, size = 100) 
             }
-        } catch (e: Exception) {
-            // Игнорируем ошибки кэширования
-        }
-    }
-
-    private suspend fun cacheOrderLocally(order: Order) = withContext(Dispatchers.IO) {
-        try {
-            val orderEntity = order.toEntity()
-            val orderItemEntities = order.items.map { it.toOrderItemEntity(order.id) }
             
-            orderDao.insertOrderWithItems(orderEntity, orderItemEntities)
+            if (apiResult.isSuccess) {
+                val adminOrdersPageResponse = apiResult.getOrNull()
+                if (adminOrdersPageResponse != null) {
+                    val orders = adminOrdersPageResponse.toDomainOrders()
+                    Log.d("OrderRepository", "Заказы по статусу $status загружены с API: ${orders.size}")
+                    Result.success(orders)
+                } else {
+                    mockOrderRepository.getOrdersByStatus(status)
+                }
+            } else {
+                Log.w("OrderRepository", "Ошибка API заказов по статусу, используем mock данные")
+                mockOrderRepository.getOrdersByStatus(status)
+            }
         } catch (e: Exception) {
-            // Игнорируем ошибки кэширования
+            Log.e("OrderRepository", "Исключение при получении заказов по статусу: ${e.message}")
+            mockOrderRepository.getOrdersByStatus(status)
         }
     }
 
-    private suspend fun createLocalOrder(
-        userId: Long,
-        cartItems: List<CartItem>,
-        deliveryAddress: String,
-        customerPhone: String,
-        customerName: String,
-        notes: String,
-        paymentMethod: PaymentMethod,
-        deliveryMethod: DeliveryMethod,
-        remoteOrderId: Long
-    ): Long = withContext(Dispatchers.IO) {
-        val totalAmount = cartItems.sumOf { it.totalPrice }
-        
-        val orderEntity = OrderEntity(
-            id = remoteOrderId,
-            userId = userId,
-            status = OrderStatus.PENDING,
-            totalAmount = totalAmount,
-            deliveryMethod = deliveryMethod,
-            deliveryAddress = deliveryAddress,
-            deliveryCost = deliveryMethod.cost,
-            paymentMethod = paymentMethod,
-            customerPhone = customerPhone,
-            customerName = customerName,
-            notes = notes,
-            estimatedDeliveryTime = System.currentTimeMillis() + (30 * 60 * 1000)
-        )
-        
-        val orderItemEntities = cartItems.map { cartItem ->
-            cartItem.toOrderItemEntity(remoteOrderId)
+    override suspend fun deleteOrder(orderId: Long): Result<Unit> = withContext(Dispatchers.IO) {
+        return@withContext try {
+            val apiResult = safeApiCall { orderApiService.cancelOrder(orderId) }
+            
+            if (apiResult.isSuccess) {
+                Log.d("OrderRepository", "Заказ отменен через API: $orderId")
+                Result.success(Unit)
+            } else {
+                Log.w("OrderRepository", "Ошибка API при отмене заказа: ${apiResult.getErrorMessage()}, используем mock")
+                mockOrderRepository.deleteOrder(orderId)
+            }
+        } catch (e: Exception) {
+            Log.e("OrderRepository", "Исключение при отмене заказа: ${e.message}")
+            mockOrderRepository.deleteOrder(orderId)
         }
-        
-        orderDao.insertOrderWithItems(orderEntity, orderItemEntities)
-        remoteOrderId
-    }
-
-    private suspend fun createLocalPendingOrder(
-        userId: Long,
-        cartItems: List<CartItem>,
-        deliveryAddress: String,
-        customerPhone: String,
-        customerName: String,
-        notes: String,
-        paymentMethod: PaymentMethod,
-        deliveryMethod: DeliveryMethod
-    ): Long = withContext(Dispatchers.IO) {
-        val totalAmount = cartItems.sumOf { it.totalPrice }
-        
-        val orderEntity = OrderEntity(
-            userId = userId,
-            status = OrderStatus.PENDING,
-            totalAmount = totalAmount,
-            deliveryMethod = deliveryMethod,
-            deliveryAddress = deliveryAddress,
-            deliveryCost = deliveryMethod.cost,
-            paymentMethod = paymentMethod,
-            customerPhone = customerPhone,
-            customerName = customerName,
-            notes = notes,
-            estimatedDeliveryTime = System.currentTimeMillis() + (30 * 60 * 1000)
-        )
-        
-        val orderId = orderDao.insertOrder(orderEntity)
-        val orderItemEntities = cartItems.map { cartItem ->
-            cartItem.toOrderItemEntity(orderId)
-        }
-        
-        orderDao.insertOrderItems(orderItemEntities)
-        orderId
     }
 } 
+

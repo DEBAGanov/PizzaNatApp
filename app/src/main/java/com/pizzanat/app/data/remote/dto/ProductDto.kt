@@ -1,6 +1,6 @@
 /**
  * @file: ProductDto.kt
- * @description: DTO модели для API продуктов
+ * @description: DTO классы для работы с продуктами и категориями API
  * @dependencies: Gson
  * @created: 2024-12-19
  */
@@ -8,6 +8,9 @@ package com.pizzanat.app.data.remote.dto
 
 import com.google.gson.annotations.SerializedName
 
+/**
+ * DTO для продукта
+ */
 data class ProductDto(
     @SerializedName("id")
     val id: Long,
@@ -22,7 +25,7 @@ data class ProductDto(
     @SerializedName("categoryId")
     val categoryId: Long,
     @SerializedName("categoryName")
-    val categoryName: String,
+    val categoryName: String? = null,
     @SerializedName("imageUrl")
     val imageUrl: String,
     @SerializedName("weight")
@@ -32,15 +35,12 @@ data class ProductDto(
     @SerializedName("available")
     val available: Boolean = true,
     @SerializedName("specialOffer")
-    val specialOffer: Boolean = false,
-    @SerializedName("ingredients")
-    val ingredients: String? = null,
-    @SerializedName("calories")
-    val calories: Int? = null,
-    @SerializedName("preparationTime")
-    val preparationTime: Int? = null
+    val specialOffer: Boolean = false
 )
 
+/**
+ * DTO для категории продуктов
+ */
 data class CategoryDto(
     @SerializedName("id")
     val id: Long,
@@ -49,28 +49,67 @@ data class CategoryDto(
     @SerializedName("description")
     val description: String,
     @SerializedName("imageUrl")
-    val imageUrl: String,
-    @SerializedName("displayOrder")
-    val displayOrder: Int
+    val imageUrl: String
 )
 
+/**
+ * DTO для пагинированного ответа продуктов
+ */
+data class ProductsPageResponse(
+    @SerializedName("content")
+    val content: List<ProductDto>,
+    @SerializedName("pageable")
+    val pageable: PageableDto,
+    @SerializedName("totalElements")
+    val totalElements: Long,
+    @SerializedName("totalPages")
+    val totalPages: Int,
+    @SerializedName("last")
+    val last: Boolean,
+    @SerializedName("size")
+    val size: Int,
+    @SerializedName("number")
+    val number: Int,
+    @SerializedName("numberOfElements")
+    val numberOfElements: Int,
+    @SerializedName("first")
+    val first: Boolean,
+    @SerializedName("empty")
+    val empty: Boolean
+)
+
+/**
+ * DTO для информации о пагинации
+ */
+data class PageableDto(
+    @SerializedName("pageNumber")
+    val pageNumber: Int,
+    @SerializedName("pageSize")
+    val pageSize: Int,
+    @SerializedName("offset")
+    val offset: Long,
+    @SerializedName("paged")
+    val paged: Boolean,
+    @SerializedName("unpaged")
+    val unpaged: Boolean
+)
+
+/**
+ * DTO для старой ProductsResponse (оставляем для совместимости)
+ */
 data class ProductsResponse(
     @SerializedName("content")
     val content: List<ProductDto>,
-    @SerializedName("totalPages")
-    val totalPages: Int,
-    @SerializedName("number")
-    val currentPage: Int,
     @SerializedName("totalElements")
-    val totalElements: Int,
-    @SerializedName("last")
-    val isLast: Boolean,
-    @SerializedName("first")
-    val isFirst: Boolean,
-    @SerializedName("size")
-    val size: Int,
+    val totalElements: Long = 0,
+    @SerializedName("totalPages") 
+    val totalPages: Int = 1,
     @SerializedName("numberOfElements")
-    val numberOfElements: Int
+    val numberOfElements: Int = 0,
+    @SerializedName("first")
+    val first: Boolean = true,
+    @SerializedName("last")
+    val last: Boolean = true
 )
 
 data class CategoriesResponse(

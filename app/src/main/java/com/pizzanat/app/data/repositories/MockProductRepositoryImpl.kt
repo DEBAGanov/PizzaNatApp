@@ -28,27 +28,118 @@ class MockProductRepositoryImpl @Inject constructor() : ProductRepository {
     
     private val mockProducts = listOf(
         // Пиццы
-        Product(1L, "Маргарита", "Классическая пицца с томатами и моцареллой", 890.0, "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=400", 1L, true),
-        Product(2L, "Пепперони", "Пицца с острой колбасой пепперони", 1200.0, "https://images.unsplash.com/photo-1628840042765-356cda07504e?w=400", 1L, true),
-        Product(3L, "Четыре сыра", "Пицца с четырьмя видами сыра", 1350.0, "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400", 1L, true),
-        Product(4L, "Гавайская", "Пицца с ананасами и ветчиной", 1100.0, "https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400", 1L, true),
+        Product(
+            id = 1L, 
+            name = "Маргарита", 
+            description = "Классическая пицца с томатами и моцареллой", 
+            price = 890.0, 
+            categoryId = 1L, 
+            imageUrl = "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=400"
+        ),
+        Product(
+            id = 2L, 
+            name = "Пепперони", 
+            description = "Пицца с острой колбасой пепперони", 
+            price = 1200.0, 
+            categoryId = 1L, 
+            imageUrl = "https://images.unsplash.com/photo-1628840042765-356cda07504e?w=400"
+        ),
+        Product(
+            id = 3L, 
+            name = "Четыре сыра", 
+            description = "Пицца с четырьмя видами сыра", 
+            price = 1350.0, 
+            categoryId = 1L, 
+            imageUrl = "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400"
+        ),
+        Product(
+            id = 4L, 
+            name = "Гавайская", 
+            description = "Пицца с ананасами и ветчиной", 
+            price = 1100.0, 
+            categoryId = 1L, 
+            imageUrl = "https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400"
+        ),
         
         // Бургеры  
-        Product(5L, "Чизбургер", "Классический бургер с сыром", 450.0, "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400", 2L, true),
-        Product(6L, "Биг Мак", "Большой бургер с двумя котлетами", 650.0, "https://images.unsplash.com/photo-1550547660-d9450f859349?w=400", 2L, true),
-        Product(7L, "Веган бургер", "Бургер с растительной котлетой", 550.0, "https://images.unsplash.com/photo-1525059696034-4967a729002e?w=400", 2L, true),
+        Product(
+            id = 5L, 
+            name = "Чизбургер", 
+            description = "Классический бургер с сыром", 
+            price = 450.0, 
+            categoryId = 2L, 
+            imageUrl = "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400"
+        ),
+        Product(
+            id = 6L, 
+            name = "Биг Мак", 
+            description = "Большой бургер с двумя котлетами", 
+            price = 650.0, 
+            categoryId = 2L, 
+            imageUrl = "https://images.unsplash.com/photo-1550547660-d9450f859349?w=400"
+        ),
+        Product(
+            id = 7L, 
+            name = "Веган бургер", 
+            description = "Бургер с растительной котлетой", 
+            price = 550.0, 
+            categoryId = 2L, 
+            imageUrl = "https://images.unsplash.com/photo-1525059696034-4967a729002e?w=400"
+        ),
         
         // Салаты
-        Product(8L, "Цезарь", "Салат с курицей и пармезаном", 380.0, "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400", 3L, true),
-        Product(9L, "Греческий", "Традиционный греческий салат", 320.0, "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=400", 3L, true),
+        Product(
+            id = 8L, 
+            name = "Цезарь", 
+            description = "Салат с курицей и пармезаном", 
+            price = 380.0, 
+            categoryId = 3L, 
+            imageUrl = "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400"
+        ),
+        Product(
+            id = 9L, 
+            name = "Греческий", 
+            description = "Традиционный греческий салат", 
+            price = 320.0, 
+            categoryId = 3L, 
+            imageUrl = "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=400"
+        ),
         
         // Напитки
-        Product(10L, "Кока-кола", "Классическая кола 0.5л", 120.0, "https://images.unsplash.com/photo-1629203851122-3726ecdf080e?w=400", 4L, true),
-        Product(11L, "Апельсиновый сок", "Свежевыжатый сок 0.3л", 180.0, "https://images.unsplash.com/photo-1621506289937-a8e4df240d0b?w=400", 4L, true),
+        Product(
+            id = 10L, 
+            name = "Кока-кола", 
+            description = "Классическая кола 0.5л", 
+            price = 120.0, 
+            categoryId = 4L, 
+            imageUrl = "https://images.unsplash.com/photo-1629203851122-3726ecdf080e?w=400"
+        ),
+        Product(
+            id = 11L, 
+            name = "Апельсиновый сок", 
+            description = "Свежевыжатый сок 0.3л", 
+            price = 180.0, 
+            categoryId = 4L, 
+            imageUrl = "https://images.unsplash.com/photo-1621506289937-a8e4df240d0b?w=400"
+        ),
         
         // Десерты
-        Product(12L, "Тирамису", "Классический итальянский десерт", 290.0, "https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?w=400", 5L, true),
-        Product(13L, "Чизкейк", "Нежный чизкейк с ягодами", 350.0, "https://images.unsplash.com/photo-1567958499588-feb1aaed8042?w=400", 5L, true)
+        Product(
+            id = 12L, 
+            name = "Тирамису", 
+            description = "Классический итальянский десерт", 
+            price = 290.0, 
+            categoryId = 5L, 
+            imageUrl = "https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?w=400"
+        ),
+        Product(
+            id = 13L, 
+            name = "Чизкейк", 
+            description = "Нежный чизкейк с ягодами", 
+            price = 350.0, 
+            categoryId = 5L, 
+            imageUrl = "https://images.unsplash.com/photo-1567958499588-feb1aaed8042?w=400"
+        )
     )
     
     override suspend fun getCategories(): Result<List<Category>> {

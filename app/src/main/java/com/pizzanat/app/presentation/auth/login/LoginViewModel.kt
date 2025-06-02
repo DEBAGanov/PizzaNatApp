@@ -85,7 +85,7 @@ class LoginViewModel @Inject constructor(
         }
     }
     
-    private fun performLogin(email: String, password: String) {
+    private fun performLogin(username: String, password: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
                 isLoading = true,
@@ -93,7 +93,7 @@ class LoginViewModel @Inject constructor(
             )
             
             try {
-                val result = loginUseCase(email, password)
+                val result = loginUseCase(username, password)
                 
                 if (result.isSuccess) {
                     _uiState.value = _uiState.value.copy(

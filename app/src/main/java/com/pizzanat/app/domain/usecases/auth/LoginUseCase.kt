@@ -15,16 +15,12 @@ class LoginUseCase @Inject constructor(
 ) {
     
     suspend operator fun invoke(
-        email: String,
+        username: String,
         password: String
     ): Result<AuthResponse> {
         // Валидация входных данных
-        if (email.isBlank()) {
-            return Result.failure(IllegalArgumentException("Email не может быть пустым"))
-        }
-        
-        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            return Result.failure(IllegalArgumentException("Неверный формат email"))
+        if (username.isBlank()) {
+            return Result.failure(IllegalArgumentException("Имя пользователя не может быть пустым"))
         }
         
         if (password.isBlank()) {
@@ -37,7 +33,7 @@ class LoginUseCase @Inject constructor(
         
         // Выполнение запроса к API
         return try {
-            val result = authRepository.login(email, password)
+            val result = authRepository.login(username, password)
             if (result.isSuccess) {
                 val authResponse = result.getOrThrow()
                 // Сохраняем токен и данные пользователя

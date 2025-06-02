@@ -22,6 +22,7 @@ data class CartUiState(
     val items: List<CartItem> = emptyList(),
     val totalPrice: Double = 0.0,
     val totalItems: Int = 0,
+    val totalQuantity: Int = 0,
     val isLoading: Boolean = false,
     val error: String? = null,
     val isEmpty: Boolean = true
@@ -51,6 +52,7 @@ class CartViewModel @Inject constructor(
                     items = cartItems,
                     totalPrice = totalPrice,
                     totalItems = totalItems,
+                    totalQuantity = totalItems,
                     isEmpty = cartItems.isEmpty(),
                     isLoading = false
                 )

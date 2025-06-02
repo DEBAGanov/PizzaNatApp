@@ -43,6 +43,7 @@ enum class OrderStatus(val displayName: String) {
  */
 data class OrderItem(
     val id: Long = 0,
+    val orderId: Long = 0,
     val productId: Long,
     val productName: String,
     val productPrice: Double,
@@ -84,3 +85,11 @@ fun OrderStatus.getDisplayName(): String {
         OrderStatus.CANCELLED -> "Отменен"
     }
 } 
+
+/**
+ * Оценка доставки
+ */
+data class DeliveryEstimate(
+    val estimatedTime: Int, // в минутах
+    val deliveryCost: Double
+) 

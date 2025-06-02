@@ -35,16 +35,15 @@ class ProductDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     
-    private val productId: Long = savedStateHandle.get<String>("productId")?.toLongOrNull() ?: 0L
-    
     private val _uiState = MutableStateFlow(ProductDetailUiState())
     val uiState: StateFlow<ProductDetailUiState> = _uiState.asStateFlow()
     
-    init {
-        loadProduct()
-    }
+    private var currentProductId: Long = 0L
     
-    private fun loadProduct() {
+    // Публичный метод для загрузки продукта по ID
+    fun loadProduct(productId: Long) {
+        currentProductId = productId
+        
         if (productId == 0L) {
             _uiState.value = _uiState.value.copy(
                 error = "Неверный ID продукта",
@@ -124,6 +123,6 @@ class ProductDetailViewModel @Inject constructor(
     }
     
     fun retry() {
-        loadProduct()
+        loadProduct(currentProductId)
     }
 } 

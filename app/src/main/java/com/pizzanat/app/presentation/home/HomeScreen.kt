@@ -1,15 +1,20 @@
 /**
  * @file: HomeScreen.kt
- * @description: Главный экран приложения с категориями продуктов
- * @dependencies: Compose, Hilt, Coil for images
+ * @description: Главный экран приложения в стиле Fox Whiskers
+ * @dependencies: Compose, Hilt, FoxSearchBar, FoxCircularProductImage
  * @created: 2024-12-19
+ * @updated: 2024-12-20 - Переход на стиль Fox Whiskers (серый фон, белые карточки)
  */
 package com.pizzanat.app.presentation.home
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
@@ -24,6 +29,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -32,6 +39,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -40,7 +48,13 @@ import coil.request.CachePolicy
 import com.pizzanat.app.R
 import com.pizzanat.app.domain.entities.Category
 import com.pizzanat.app.presentation.theme.PizzaNatTheme
+import com.pizzanat.app.presentation.theme.YellowBright
+import com.pizzanat.app.presentation.theme.CardShadow
+import com.pizzanat.app.presentation.theme.CategoryPlateYellow
 import com.pizzanat.app.presentation.components.BadgedIcon
+import com.pizzanat.app.presentation.components.OptimizedAsyncImage
+import com.pizzanat.app.presentation.components.FoxCircularProductImageMedium
+import com.pizzanat.app.presentation.components.FoxSearchBar
 import com.pizzanat.app.domain.usecases.notification.GetNotificationsUseCase
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,70 +69,92 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var searchQuery by remember { mutableStateOf("") }
     
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background) // Серый фон Fox Whiskers
             .statusBarsPadding()
     ) {
-        // Top App Bar
-        TopAppBar(
-            title = {
+        // Top App Bar с желтой плашкой как в Fox Whiskers
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = CategoryPlateYellow
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
                     text = "🍕 PizzaNat",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = Color.Black
                 )
+                
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = viewModel::refresh) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Обновить",
+                            tint = Color.Black
+                        )
+                    }
+                    IconButton(onClick = onNavigateToNotifications) {
+                        BadgedIcon(
+                            icon = Icons.Default.Notifications,
+                            contentDescription = "Уведомления",
+                            badgeCount = uiState.unreadNotificationsCount,
+                            iconTint = Color.Black
+                        )
+                    }
+                    IconButton(onClick = onNavigateToCart) {
+                        Icon(
+                            imageVector = Icons.Default.ShoppingCart,
+                            contentDescription = "Корзина",
+                            tint = Color.Black
+                        )
+                    }
+                    IconButton(onClick = onNavigateToProfile) {
+                        Icon(
+                            imageVector = Icons.Default.AccountCircle,
+                            contentDescription = "Профиль",
+                            tint = Color.Black
+                        )
+                    }
+                    IconButton(onClick = onNavigateToAdmin) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Админ панель",
+                            tint = Color.Black
+                        )
+                    }
+                }
+            }
+        }
+        
+        // Серая строка поиска как в Fox Whiskers
+        FoxSearchBar(
+            query = searchQuery,
+            onQueryChange = { searchQuery = it },
+            onSearch = { 
+                if (it.isNotEmpty()) {
+                    onNavigateToSearch()
+                }
             },
-            actions = {
-                IconButton(onClick = viewModel::refresh) {
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = "Обновить",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-                IconButton(onClick = onNavigateToSearch) {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "Поиск",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-                IconButton(onClick = onNavigateToNotifications) {
-                    BadgedIcon(
-                        icon = Icons.Default.Notifications,
-                        contentDescription = "Уведомления",
-                        badgeCount = uiState.unreadNotificationsCount,
-                        iconTint = MaterialTheme.colorScheme.primary
-                    )
-                }
-                IconButton(onClick = onNavigateToCart) {
-                    Icon(
-                        imageVector = Icons.Default.ShoppingCart,
-                        contentDescription = "Корзина",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-                IconButton(onClick = onNavigateToProfile) {
-                    Icon(
-                        imageVector = Icons.Default.AccountCircle,
-                        contentDescription = "Профиль",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-                IconButton(onClick = onNavigateToAdmin) {
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "Админ панель",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            placeholder = "Искать"
         )
         
         // Content
@@ -179,6 +215,12 @@ private fun ErrorContent(
     onRetry: () -> Unit,
     onDismissError: () -> Unit
 ) {
+    LaunchedEffect(error) {
+        // Автоматически скрываем ошибку через 5 секунд
+        kotlinx.coroutines.delay(5000)
+        onDismissError()
+    }
+    
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -186,20 +228,31 @@ private fun ErrorContent(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp),
+                .padding(16.dp),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.errorContainer
-            )
+                containerColor = Color.White
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {
             Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = "⚠️ Ошибка",
+                    text = "😕",
+                    style = MaterialTheme.typography.displayMedium
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text(
+                    text = "Упс! Что-то пошло не так",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onErrorContainer
+                    textAlign = TextAlign.Center
                 )
                 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -207,33 +260,20 @@ private fun ErrorContent(
                 Text(
                     text = error,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
                 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
                 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                Button(
+                    onClick = onRetry,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = Color.Black
+                    )
                 ) {
-                    OutlinedButton(
-                        onClick = onDismissError,
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                    ) {
-                        Text("Закрыть")
-                    }
-                    
-                    Button(
-                        onClick = onRetry,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.onErrorContainer,
-                            contentColor = MaterialTheme.colorScheme.errorContainer
-                        )
-                    ) {
-                        Text("Повторить")
-                    }
+                    Text("Попробовать снова")
                 }
             }
         }
@@ -248,71 +288,16 @@ private fun CategoriesContent(
     error: String?,
     onDismissError: () -> Unit
 ) {
-    Column {
-        // Error Snackbar
-        error?.let { errorMessage ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer
-                )
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = errorMessage,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.weight(1f)
-                    )
-                    TextButton(onClick = onDismissError) {
-                        Text(
-                            text = "✕",
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                    }
-                }
+    Column(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        if (error != null) {
+            LaunchedEffect(error) {
+                kotlinx.coroutines.delay(3000)
+                onDismissError()
             }
         }
         
-        // Welcome Section
-        if (categories.isNotEmpty()) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "Добро пожаловать!",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    Text(
-                        text = "Выберите категорию и насладитесь вкусной пиццей",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
-        }
-        
-        // Loading indicator for refresh
         if (isRefreshing) {
             LinearProgressIndicator(
                 modifier = Modifier.fillMaxWidth(),
@@ -320,103 +305,72 @@ private fun CategoriesContent(
             )
         }
         
-        // Categories Grid
-        if (categories.isEmpty() && !isRefreshing) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Категории не найдены",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+        // Сетка категорий в стиле Fox Whiskers
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            contentPadding = PaddingValues(vertical = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(categories) { category ->
+                FoxCategoryCard(
+                    category = category,
+                    onClick = { onCategoryClick(category) }
                 )
-            }
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                contentPadding = PaddingValues(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                items(categories) { category ->
-                    CategoryCard(
-                        category = category,
-                        onClick = { onCategoryClick(category) }
-                    )
-                }
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CategoryCard(
+private fun FoxCategoryCard(
     category: Category,
     onClick: () -> Unit
 ) {
     Card(
-        onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(1f),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+            .aspectRatio(1f)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 4.dp,
+            pressedElevation = 6.dp
         )
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(12.dp),
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Category Image
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(category.imageUrl)
-                    .crossfade(true)
-                    .memoryCachePolicy(CachePolicy.ENABLED)
-                    .diskCachePolicy(CachePolicy.ENABLED)
-                    .size(160, 160)
-                    .build(),
+            // Круглое изображение категории
+            FoxCircularProductImageMedium(
+                imageUrl = category.imageUrl,
                 contentDescription = category.name,
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(RoundedCornerShape(12.dp)),
-                contentScale = ContentScale.Crop,
-                placeholder = painterResource(android.R.drawable.ic_menu_gallery),
-                error = painterResource(android.R.drawable.ic_menu_report_image)
+                size = 80.dp
             )
             
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             
-            // Category Name
+            // Название категории
             Text(
                 text = category.name,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontWeight = FontWeight.Medium
+                ),
                 textAlign = TextAlign.Center,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            
-            // Category Description (if available)
-            if (category.description.isNotBlank()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = category.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    textAlign = TextAlign.Center,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                )
-            }
         }
     }
 }

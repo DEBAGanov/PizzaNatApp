@@ -1,12 +1,14 @@
 /**
  * @file: CartScreen.kt
- * @description: Экран корзины покупок с управлением товарами
- * @dependencies: Compose, Hilt, Material3, Coil
+ * @description: Экран корзины в стиле Fox Whiskers
+ * @dependencies: Compose, Hilt, Material3, FoxProductCard, FoxQuantitySelector
  * @created: 2024-12-19
+ * @updated: 2024-12-20 - Переход на стиль Fox Whiskers
  */
 package com.pizzanat.app.presentation.cart
 
 import androidx.compose.animation.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -27,12 +29,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.pizzanat.app.domain.entities.CartItem
 import com.pizzanat.app.presentation.theme.PizzaNatTheme
+import com.pizzanat.app.presentation.theme.CategoryPlateYellow
+import com.pizzanat.app.presentation.components.FoxProductCardHorizontal
+import com.pizzanat.app.presentation.components.FoxCircularProductImageMedium
+import com.pizzanat.app.presentation.components.FoxQuantitySelector
 import java.text.NumberFormat
 import java.util.*
 
@@ -49,13 +56,15 @@ fun CartScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background) // Серый фон Fox Whiskers
             .statusBarsPadding()
     ) {
-        // Top Bar
+        // Top Bar с желтой плашкой как в Fox Whiskers
         CartTopBar(
             onNavigateBack = onNavigateBack,
             onClearCart = viewModel::clearCart,
-            isEmpty = uiState.isEmpty
+            isEmpty = uiState.isEmpty,
+            itemCount = uiState.totalQuantity
         )
         
         // Content
@@ -91,40 +100,70 @@ fun CartScreen(
 private fun CartTopBar(
     onNavigateBack: () -> Unit,
     onClearCart: () -> Unit,
-    isEmpty: Boolean
+    isEmpty: Boolean,
+    itemCount: Int
 ) {
     var showClearDialog by remember { mutableStateOf(false) }
     
-    TopAppBar(
-        title = {
-            Text(
-                text = "Корзина",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-        },
-        navigationIcon = {
-            IconButton(onClick = onNavigateBack) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Назад"
-                )
-            }
-        },
-        actions = {
-            if (!isEmpty) {
-                IconButton(onClick = { showClearDialog = true }) {
+    // Желтая плашка как в Fox Whiskers
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = CategoryPlateYellow
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                IconButton(onClick = onNavigateBack) {
                     Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Очистить корзину"
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Назад",
+                        tint = Color.Black
                     )
                 }
+                
+                Text(
+                    text = "Корзина",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
             }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    )
+            
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (!isEmpty) {
+                    // Количество товаров как на скриншоте Fox Whiskers
+                    Text(
+                        text = "$itemCount товаров",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Black
+                    )
+                    
+                    IconButton(onClick = { showClearDialog = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Очистить корзину",
+                            tint = Color.Black
+                        )
+                    }
+                }
+            }
+        }
+    }
     
     // Clear Cart Confirmation Dialog
     if (showClearDialog) {
@@ -193,51 +232,45 @@ private fun ErrorContent(
                 .fillMaxWidth()
                 .padding(24.dp),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.errorContainer
-            )
+                containerColor = Color.White
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {
             Column(
                 modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    text = "⚠️ Ошибка загрузки",
+                    text = "😕",
+                    style = MaterialTheme.typography.displayMedium
+                )
+                Text(
+                    text = "Ошибка загрузки корзины",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onErrorContainer
+                    textAlign = TextAlign.Center
                 )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
                 Text(
                     text = error,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Button(
                         onClick = onRetry,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.onErrorContainer,
-                            contentColor = MaterialTheme.colorScheme.errorContainer
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = Color.Black
                         )
                     ) {
                         Text("Повторить")
                     }
-                    
-                    OutlinedButton(
-                        onClick = onDismissError,
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                    ) {
-                        Text("ОК")
+                    OutlinedButton(onClick = onDismissError) {
+                        Text("Закрыть")
                     }
                 }
             }
@@ -251,32 +284,36 @@ private fun EmptyCartContent() {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(24.dp)
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
-            Text(
-                text = "🛒",
-                style = MaterialTheme.typography.displayLarge
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Text(
-                text = "Корзина пуста",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Text(
-                text = "Добавьте товары в корзину, чтобы оформить заказ",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                textAlign = TextAlign.Center
-            )
+            Column(
+                modifier = Modifier.padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "🛒",
+                    style = MaterialTheme.typography.displayLarge
+                )
+                Text(
+                    text = "Корзина пуста",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Добавьте товары в корзину для оформления заказа",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+            }
         }
     }
 }
@@ -292,288 +329,159 @@ private fun CartContent(
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
-        // Items List
+        // Список товаров
         LazyColumn(
-            modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(16.dp),
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 16.dp),
+            contentPadding = PaddingValues(vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(
-                items = uiState.items,
-                key = { it.id }
-            ) { cartItem ->
-                AnimatedVisibility(
-                    visible = true,
-                    enter = fadeIn() + slideInVertically(),
-                    exit = fadeOut() + slideOutVertically()
+            items(uiState.items) { cartItem ->
+                FoxCartItemCard(
+                    cartItem = cartItem,
+                    onItemClick = onItemClick,
+                    onUpdateQuantity = { newQuantity ->
+                        onUpdateQuantity(cartItem.productId, newQuantity)
+                    },
+                    onRemove = { onRemoveItem(cartItem.productId) }
+                )
+            }
+        }
+        
+        // Итого и кнопка оформления как в Fox Whiskers
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Общая сумма
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    CartItemCard(
-                        cartItem = cartItem,
-                        onClick = { onItemClick(cartItem) },
-                        onUpdateQuantity = { quantity ->
-                            onUpdateQuantity(cartItem.id, quantity)
-                        },
-                        onRemove = { onRemoveItem(cartItem.id) }
+                    Text(
+                        text = "Итого:",
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "${NumberFormat.getNumberInstance(Locale("ru", "RU")).format(uiState.totalPrice)} ₽",
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                
+                // Большая желтая кнопка как в Fox Whiskers
+                Button(
+                    onClick = onNavigateToCheckout,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = RoundedCornerShape(28.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = Color.Black
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(
+                        defaultElevation = 4.dp,
+                        pressedElevation = 2.dp
+                    )
+                ) {
+                    Text(
+                        text = "Оформить заказ",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold
+                        )
                     )
                 }
             }
         }
-        
-        // Bottom Section with Total and Checkout
-        CartBottomSection(
-            totalItems = uiState.totalItems,
-            totalPrice = uiState.totalPrice,
-            onNavigateToCheckout = onNavigateToCheckout
-        )
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CartItemCard(
+private fun FoxCartItemCard(
     cartItem: CartItem,
-    onClick: () -> Unit,
+    onItemClick: (CartItem) -> Unit,
     onUpdateQuantity: (Int) -> Unit,
     onRemove: () -> Unit
 ) {
-    var showRemoveDialog by remember { mutableStateOf(false) }
-    
     Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = Modifier
+            .fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Product Image
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(cartItem.productImageUrl)
-                    .crossfade(true)
-                    .build(),
+            // Круглое изображение товара
+            FoxCircularProductImageMedium(
+                imageUrl = cartItem.productImageUrl,
                 contentDescription = cartItem.productName,
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(RoundedCornerShape(12.dp)),
-                contentScale = ContentScale.Crop
+                size = 60.dp
             )
             
-            Spacer(modifier = Modifier.width(16.dp))
-            
-            // Product Info
+            // Информация о товаре
             Column(
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
                     text = cartItem.productName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 2,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.Medium
+                    ),
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 
-                Spacer(modifier = Modifier.height(4.dp))
-                
                 Text(
-                    text = NumberFormat.getCurrencyInstance(Locale("ru", "RU"))
-                        .format(cartItem.productPrice),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    text = "${NumberFormat.getNumberInstance(Locale("ru", "RU")).format(cartItem.productPrice)} ₽",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                // Quantity Controls
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // Decrease Button
-                    IconButton(
-                        onClick = {
-                            if (cartItem.quantity > 1) {
-                                onUpdateQuantity(cartItem.quantity - 1)
-                            } else {
-                                showRemoveDialog = true
-                            }
-                        },
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.KeyboardArrowDown,
-                            contentDescription = "Уменьшить количество",
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                    
-                    // Quantity
-                    Text(
-                        text = cartItem.quantity.toString(),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 8.dp)
-                    )
-                    
-                    // Increase Button
-                    IconButton(
-                        onClick = { onUpdateQuantity(cartItem.quantity + 1) },
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Увеличить количество",
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
             }
             
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            // Total Price and Remove Button
-            Column(
-                horizontalAlignment = Alignment.End
-            ) {
-                Text(
-                    text = NumberFormat.getCurrencyInstance(Locale("ru", "RU"))
-                        .format(cartItem.totalPrice),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                IconButton(
-                    onClick = { showRemoveDialog = true },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Удалить",
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
-        }
-    }
-    
-    // Remove Item Confirmation Dialog
-    if (showRemoveDialog) {
-        AlertDialog(
-            onDismissRequest = { showRemoveDialog = false },
-            title = {
-                Text("Удалить товар?")
-            },
-            text = {
-                Text("Товар \"${cartItem.productName}\" будет удален из корзины.")
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
+            // Желтые круглые кнопки управления количеством
+            FoxQuantitySelector(
+                quantity = cartItem.quantity,
+                onIncrement = { onUpdateQuantity(cartItem.quantity + 1) },
+                onDecrement = { 
+                    if (cartItem.quantity > 1) {
+                        onUpdateQuantity(cartItem.quantity - 1)
+                    } else {
                         onRemove()
-                        showRemoveDialog = false
                     }
-                ) {
-                    Text("Удалить")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showRemoveDialog = false }) {
-                    Text("Отмена")
-                }
-            }
-        )
-    }
-}
-
-@Composable
-private fun CartBottomSection(
-    totalItems: Int,
-    totalPrice: Double,
-    onNavigateToCheckout: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp)
-        ) {
-            // Total Info
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "$totalItems ${getItemsText(totalItems)}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                    )
-                    Text(
-                        text = "К оплате:",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-                
-                Text(
-                    text = NumberFormat.getCurrencyInstance(Locale("ru", "RU"))
-                        .format(totalPrice),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Checkout Button
-            Button(
-                onClick = onNavigateToCheckout,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ShoppingCart,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Оформить заказ",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+                },
+                buttonSize = 32.dp
+            )
         }
-    }
-}
-
-private fun getItemsText(count: Int): String {
-    return when {
-        count % 10 == 1 && count % 100 != 11 -> "товар"
-        count % 10 in 2..4 && count % 100 !in 12..14 -> "товара"
-        else -> "товаров"
     }
 }
 

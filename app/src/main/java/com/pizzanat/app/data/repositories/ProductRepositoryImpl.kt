@@ -6,9 +6,11 @@
  */
 package com.pizzanat.app.data.repositories
 
+import android.util.Log
 import com.pizzanat.app.data.mappers.toDomain
 import com.pizzanat.app.data.mappers.toCategoryDomain
 import com.pizzanat.app.data.mappers.toProductDomain
+import com.pizzanat.app.data.mappers.toProductsDomain
 import com.pizzanat.app.data.remote.api.ProductApiService
 import com.pizzanat.app.data.remote.util.safeApiCall
 import com.pizzanat.app.data.remote.util.toResult
@@ -42,8 +44,15 @@ class ProductRepositoryImpl @Inject constructor(
         val apiResult = safeApiCall { 
             productApiService.getProductsByCategory(categoryId, page, size) 
         }
-        apiResult.toResult().map { response ->
-            response?.content?.toProductDomain() ?: emptyList()
+        apiResult.toResult().map { pageResponse ->
+            // Используем новый маппер для пагинированного ответа
+            pageResponse?.toProductsDomain() ?: emptyList()
+        }.also { result ->
+            if (result.isSuccess) {
+                Log.d("ProductRepository", "Продукты категории $categoryId загружены: ${result.getOrNull()?.size} товаров")
+            } else {
+                Log.w("ProductRepository", "Ошибка загрузки продуктов категории $categoryId: ${result.exceptionOrNull()?.message}")
+            }
         }
     }
     
@@ -66,15 +75,23 @@ class ProductRepositoryImpl @Inject constructor(
         val apiResult = safeApiCall { 
             productApiService.searchProducts(query, page, size) 
         }
-        apiResult.toResult().map { response ->
-            response?.content?.toProductDomain() ?: emptyList()
+        apiResult.toResult().map { pageResponse ->
+            // Используем новый маппер для пагинированного ответа
+            pageResponse?.toProductsDomain() ?: emptyList()
         }
     }
     
     override suspend fun getSpecialOffers(): Result<List<Product>> = withContext(Dispatchers.IO) {
-        val apiResult = safeApiCall { productApiService.getPopularProducts(10) }
+        // Используем правильный эндпоинт специальных предложений из микросервиса
+        val apiResult = safeApiCall { productApiService.getSpecialOffers() }
         apiResult.toResult().map { products ->
             products?.toProductDomain() ?: emptyList()
+        }.also { result ->
+            if (result.isSuccess) {
+                Log.d("ProductRepository", "Специальные предложения загружены: ${result.getOrNull()?.size} товаров")
+            } else {
+                Log.w("ProductRepository", "Ошибка загрузки специальных предложений: ${result.exceptionOrNull()?.message}")
+            }
         }
     }
     

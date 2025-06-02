@@ -12,9 +12,11 @@ data class OrderDto(
     @SerializedName("id")
     val id: Long,
     @SerializedName("userId")
-    val userId: Long,
+    val userId: Long? = null,
     @SerializedName("status")
     val status: String,
+    @SerializedName("statusDescription")
+    val statusDescription: String? = null,
     @SerializedName("totalAmount")
     val totalAmount: Double,
     @SerializedName("deliveryAddress")
@@ -24,15 +26,25 @@ data class OrderDto(
     @SerializedName("contactName")
     val contactName: String,
     @SerializedName("notes")
-    val notes: String = "",
+    val notes: String? = "",
+    @SerializedName("comment")
+    val comment: String? = null,
     @SerializedName("createdAt")
     val createdAt: String,
+    @SerializedName("updatedAt")
+    val updatedAt: String? = null,
     @SerializedName("estimatedDeliveryTime")
     val estimatedDeliveryTime: String? = null,
     @SerializedName("deliveryFee")
     val deliveryFee: Double = 0.0,
+    @SerializedName("deliveryLocationId")
+    val deliveryLocationId: Long? = null,
+    @SerializedName("deliveryLocationName")
+    val deliveryLocationName: String? = null,
+    @SerializedName("deliveryLocationAddress")
+    val deliveryLocationAddress: String? = null,
     @SerializedName("items")
-    val items: List<OrderItemDto> = emptyList()
+    val items: List<OrderItemDto>? = null
 )
 
 data class OrderItemDto(
@@ -43,35 +55,32 @@ data class OrderItemDto(
     @SerializedName("productName")
     val productName: String,
     @SerializedName("productPrice")
-    val productPrice: Double,
+    val productPrice: Double? = null,
+    @SerializedName("price")
+    val price: Double,
     @SerializedName("productImageUrl")
-    val productImageUrl: String,
+    val productImageUrl: String? = null,
     @SerializedName("quantity")
     val quantity: Int,
+    @SerializedName("subtotal")
+    val subtotal: Double? = null,
     @SerializedName("selectedOptions")
-    val selectedOptions: Map<String, String> = emptyMap()
+    val selectedOptions: Map<String, String>? = null
 )
 
 data class CreateOrderRequest(
-    @SerializedName("items")
-    val items: List<CreateOrderItemRequest>,
+    @SerializedName("deliveryLocationId")
+    val deliveryLocationId: Long? = null,
     @SerializedName("deliveryAddress")
-    val deliveryAddress: String,
+    val deliveryAddress: String? = null,
     @SerializedName("contactPhone")
     val contactPhone: String,
     @SerializedName("contactName")
     val contactName: String,
+    @SerializedName("comment")
+    val comment: String? = null,
     @SerializedName("notes")
-    val notes: String = ""
-)
-
-data class CreateOrderItemRequest(
-    @SerializedName("productId")
-    val productId: Long,
-    @SerializedName("quantity")
-    val quantity: Int,
-    @SerializedName("selectedOptions")
-    val selectedOptions: Map<String, String> = emptyMap()
+    val notes: String? = null
 )
 
 data class CreateOrderResponse(
@@ -95,4 +104,30 @@ data class OrdersResponse(
     val currentPage: Int,
     @SerializedName("totalElements")
     val totalElements: Int
+)
+
+/**
+ * DTO для админского API заказов (Spring Boot Page структура)
+ */
+data class AdminOrdersPageResponse(
+    @SerializedName("content")
+    val content: List<OrderDto>,
+    @SerializedName("pageable")
+    val pageable: PageableDto,
+    @SerializedName("totalElements")
+    val totalElements: Long,
+    @SerializedName("totalPages")
+    val totalPages: Int,
+    @SerializedName("last")
+    val last: Boolean,
+    @SerializedName("size")
+    val size: Int,
+    @SerializedName("number")
+    val number: Int,
+    @SerializedName("numberOfElements")
+    val numberOfElements: Int,
+    @SerializedName("first")
+    val first: Boolean,
+    @SerializedName("empty")
+    val empty: Boolean
 ) 

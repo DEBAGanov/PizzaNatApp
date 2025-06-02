@@ -84,12 +84,12 @@ class AuthRepositoryImpl @Inject constructor(
     }
     
     override suspend fun login(
-        email: String,
+        username: String,
         password: String
     ): Result<AuthResponse> = withContext(Dispatchers.IO) {
         try {
             val request = LoginRequestDto(
-                email = email,
+                username = username,
                 password = password
             )
             
@@ -108,7 +108,7 @@ class AuthRepositoryImpl @Inject constructor(
                 // Пытаемся найти локально сохраненного пользователя как временное решение
                 if (response.code() == 500) {
                     val savedUser = userManager.getUser()
-                    if (savedUser != null && savedUser.email == email) {
+                    if (savedUser != null && savedUser.email == username) {
                         // Имитируем успешный логин для уже зарегистрированного пользователя
                         val authResponse = AuthResponse(
                             token = "temp_token_${System.currentTimeMillis()}",

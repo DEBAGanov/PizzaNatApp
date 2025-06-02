@@ -1,12 +1,14 @@
 /**
  * @file: CheckoutScreen.kt
- * @description: Экран оформления заказа с вводом данных доставки
+ * @description: Экран оформления заказа в стиле Fox Whiskers
  * @dependencies: Compose, Hilt, Material3
  * @created: 2024-12-19
+ * @updated: 2024-12-20 - Переход на стиль Fox Whiskers
  */
 package com.pizzanat.app.presentation.checkout
 
 import androidx.compose.animation.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,6 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -32,6 +35,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pizzanat.app.domain.entities.CartItem
 import com.pizzanat.app.presentation.theme.PizzaNatTheme
+import com.pizzanat.app.presentation.theme.CategoryPlateYellow
 import java.text.NumberFormat
 import java.util.*
 
@@ -45,32 +49,15 @@ fun CheckoutScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
 
+    // Серый фон в стиле Fox Whiskers
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
-        // Top Bar
-        TopAppBar(
-            title = {
-                Text(
-                    text = "Оформление заказа",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            navigationIcon = {
-                IconButton(onClick = onNavigateBack) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Назад"
-                    )
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
-        )
+        // Желтая плашка заголовка
+        CheckoutTopBar(onNavigateBack = onNavigateBack)
 
         // Content
         when {
@@ -104,24 +91,70 @@ fun CheckoutScreen(
 }
 
 @Composable
+private fun CheckoutTopBar(onNavigateBack: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = CategoryPlateYellow
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            IconButton(onClick = onNavigateBack) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Назад",
+                    tint = Color.Black
+                )
+            }
+            
+            Text(
+                text = "Оформление заказа",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+            )
+        }
+    }
+}
+
+@Composable
 private fun LoadingContent() {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(48.dp),
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "Загрузка корзины...",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-            )
+            Column(
+                modifier = Modifier.padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(48.dp),
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "Загрузка корзины...",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
         }
     }
 }
@@ -132,40 +165,48 @@ private fun EmptyCartContent(onNavigateBack: () -> Unit) {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(24.dp)
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
-            Text(
-                text = "🛒",
-                style = MaterialTheme.typography.displayLarge
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Text(
-                text = "Корзина пуста",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Text(
-                text = "Добавьте товары в корзину для оформления заказа",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                textAlign = TextAlign.Center
-            )
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            Button(
-                onClick = onNavigateBack,
-                modifier = Modifier.fillMaxWidth()
+            Column(
+                modifier = Modifier.padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text("К каталогу")
+                Text(
+                    text = "🛒",
+                    style = MaterialTheme.typography.displayLarge
+                )
+                
+                Text(
+                    text = "Корзина пуста",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                
+                Text(
+                    text = "Добавьте товары в корзину для оформления заказа",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    textAlign = TextAlign.Center
+                )
+                
+                Button(
+                    onClick = onNavigateBack,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text("К каталогу", color = Color.Black)
+                }
             }
         }
     }
@@ -188,7 +229,8 @@ private fun CheckoutContent(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
-            .padding(16.dp)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Error Message
         AnimatedVisibility(
@@ -197,12 +239,11 @@ private fun CheckoutContent(
             exit = shrinkVertically() + fadeOut()
         ) {
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
+                modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.errorContainer
-                )
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
                 Row(
                     modifier = Modifier
@@ -234,134 +275,15 @@ private fun CheckoutContent(
             totalItems = uiState.totalItems
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
-
         // Delivery Information
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Text(
-                    text = "Информация о доставке",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Delivery Address
-                OutlinedTextField(
-                    value = uiState.deliveryAddress,
-                    onValueChange = onUpdateAddress,
-                    label = { Text("Адрес доставки") },
-                    leadingIcon = {
-                        Icon(Icons.Default.LocationOn, contentDescription = null)
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    isError = uiState.addressError != null,
-                    supportingText = {
-                        if (uiState.addressError != null) {
-                            Text(
-                                text = uiState.addressError!!,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    },
-                    keyboardOptions = KeyboardOptions(
-                        imeAction = ImeAction.Next
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Customer Phone
-                OutlinedTextField(
-                    value = uiState.customerPhone,
-                    onValueChange = onUpdatePhone,
-                    label = { Text("Номер телефона") },
-                    leadingIcon = {
-                        Icon(Icons.Default.Phone, contentDescription = null)
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    isError = uiState.phoneError != null,
-                    supportingText = {
-                        if (uiState.phoneError != null) {
-                            Text(
-                                text = uiState.phoneError!!,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Phone,
-                        imeAction = ImeAction.Next
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Customer Name
-                OutlinedTextField(
-                    value = uiState.customerName,
-                    onValueChange = onUpdateName,
-                    label = { Text("Имя получателя") },
-                    leadingIcon = {
-                        Icon(Icons.Default.Person, contentDescription = null)
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    isError = uiState.nameError != null,
-                    supportingText = {
-                        if (uiState.nameError != null) {
-                            Text(
-                                text = uiState.nameError!!,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    },
-                    keyboardOptions = KeyboardOptions(
-                        imeAction = ImeAction.Next
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Notes
-                OutlinedTextField(
-                    value = uiState.notes,
-                    onValueChange = onUpdateNotes,
-                    label = { Text("Комментарии к заказу (необязательно)") },
-                    leadingIcon = {
-                        Icon(Icons.Default.Edit, contentDescription = null)
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    maxLines = 3,
-                    keyboardOptions = KeyboardOptions(
-                        imeAction = ImeAction.Done
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onDone = { focusManager.clearFocus() }
-                    )
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(32.dp))
+        DeliveryInfoCard(
+            uiState = uiState,
+            onUpdateAddress = onUpdateAddress,
+            onUpdatePhone = onUpdatePhone,
+            onUpdateName = onUpdateName,
+            onUpdateNotes = onUpdateNotes,
+            focusManager = focusManager
+        )
 
         // Proceed to Payment Button
         Button(
@@ -369,13 +291,20 @@ private fun CheckoutContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
+            shape = RoundedCornerShape(28.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = Color.Black
+            ),
+            elevation = ButtonDefaults.buttonElevation(
+                defaultElevation = 4.dp,
+                pressedElevation = 2.dp
             )
         ) {
             Icon(
-                imageVector = Icons.Default.Star, // Используем Star вместо ArrowForward
-                contentDescription = null
+                imageVector = Icons.Default.Star,
+                contentDescription = null,
+                tint = Color.Black
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
@@ -385,7 +314,7 @@ private fun CheckoutContent(
             )
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(32.dp))
     }
 }
 
@@ -399,11 +328,11 @@ private fun OrderSummaryCard(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = Color.White
         )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(20.dp)
         ) {
             Text(
                 text = "Ваш заказ",
@@ -429,14 +358,14 @@ private fun OrderSummaryCard(
                             fontWeight = FontWeight.Medium
                         )
                         Text(
-                            text = "${item.quantity} шт. × ${NumberFormat.getCurrencyInstance(Locale("ru", "RU")).format(item.productPrice)}",
+                            text = "${item.quantity} шт. × ${NumberFormat.getNumberInstance(Locale("ru", "RU")).format(item.productPrice)} ₽",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         )
                     }
                     
                     Text(
-                        text = NumberFormat.getCurrencyInstance(Locale("ru", "RU")).format(item.totalPrice),
+                        text = "${NumberFormat.getNumberInstance(Locale("ru", "RU")).format(item.totalPrice)} ₽",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
@@ -447,7 +376,7 @@ private fun OrderSummaryCard(
             Spacer(modifier = Modifier.height(12.dp))
             
             HorizontalDivider()
-            
+
             Spacer(modifier = Modifier.height(12.dp))
 
             Row(
@@ -456,14 +385,12 @@ private fun OrderSummaryCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Итого ($totalItems ${getItemsText(totalItems)}):",
+                    text = "Итого ($totalItems товаров):",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    fontWeight = FontWeight.Bold
                 )
-                
                 Text(
-                    text = NumberFormat.getCurrencyInstance(Locale("ru", "RU")).format(totalPrice),
+                    text = "${NumberFormat.getNumberInstance(Locale("ru", "RU")).format(totalPrice)} ₽",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -473,11 +400,137 @@ private fun OrderSummaryCard(
     }
 }
 
-private fun getItemsText(count: Int): String {
-    return when {
-        count % 10 == 1 && count % 100 != 11 -> "товар"
-        count % 10 in 2..4 && count % 100 !in 12..14 -> "товара"
-        else -> "товаров"
+@Composable
+private fun DeliveryInfoCard(
+    uiState: CheckoutUiState,
+    onUpdateAddress: (String) -> Unit,
+    onUpdatePhone: (String) -> Unit,
+    onUpdateName: (String) -> Unit,
+    onUpdateNotes: (String) -> Unit,
+    focusManager: androidx.compose.ui.focus.FocusManager
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            Text(
+                text = "Информация о доставке",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Delivery Address
+            OutlinedTextField(
+                value = uiState.deliveryAddress,
+                onValueChange = onUpdateAddress,
+                label = { Text("Адрес доставки") },
+                leadingIcon = {
+                    Icon(Icons.Default.LocationOn, contentDescription = null)
+                },
+                modifier = Modifier.fillMaxWidth(),
+                isError = uiState.addressError != null,
+                supportingText = {
+                    if (uiState.addressError != null) {
+                        Text(
+                            text = uiState.addressError!!,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                },
+                keyboardOptions = KeyboardOptions(
+                    imeAction = ImeAction.Next
+                ),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                )
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Customer Phone
+            OutlinedTextField(
+                value = uiState.customerPhone,
+                onValueChange = onUpdatePhone,
+                label = { Text("Номер телефона") },
+                leadingIcon = {
+                    Icon(Icons.Default.Phone, contentDescription = null)
+                },
+                modifier = Modifier.fillMaxWidth(),
+                isError = uiState.phoneError != null,
+                supportingText = {
+                    if (uiState.phoneError != null) {
+                        Text(
+                            text = uiState.phoneError!!,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                },
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Phone,
+                    imeAction = ImeAction.Next
+                ),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                )
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Customer Name
+            OutlinedTextField(
+                value = uiState.customerName,
+                onValueChange = onUpdateName,
+                label = { Text("Имя получателя") },
+                leadingIcon = {
+                    Icon(Icons.Default.Person, contentDescription = null)
+                },
+                modifier = Modifier.fillMaxWidth(),
+                isError = uiState.nameError != null,
+                supportingText = {
+                    if (uiState.nameError != null) {
+                        Text(
+                            text = uiState.nameError!!,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                },
+                keyboardOptions = KeyboardOptions(
+                    imeAction = ImeAction.Next
+                ),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                )
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Notes
+            OutlinedTextField(
+                value = uiState.notes,
+                onValueChange = onUpdateNotes,
+                label = { Text("Комментарии к заказу (необязательно)") },
+                leadingIcon = {
+                    Icon(Icons.Default.Edit, contentDescription = null)
+                },
+                modifier = Modifier.fillMaxWidth(),
+                maxLines = 3,
+                keyboardOptions = KeyboardOptions(
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(
+                    onDone = { focusManager.clearFocus() }
+                )
+            )
+        }
     }
 }
 

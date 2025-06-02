@@ -14,6 +14,9 @@ import com.google.gson.Gson
 import com.pizzanat.app.BuildConfig
 import com.pizzanat.app.data.network.api.AuthApiService
 import com.pizzanat.app.data.network.interceptors.AuthInterceptor
+import com.pizzanat.app.data.remote.api.AdminApiService
+import com.pizzanat.app.data.remote.api.CartApiService
+import com.pizzanat.app.data.remote.api.DeliveryApiService
 import com.pizzanat.app.data.remote.api.OrderApiService
 import com.pizzanat.app.data.remote.api.ProductApiService
 import com.pizzanat.app.data.repositories.TokenManager
@@ -96,6 +99,8 @@ object NetworkModule {
             .build()
     }
     
+    // ========== API Services ==========
+    
     @Provides
     @Singleton
     fun provideAuthApiService(retrofit: Retrofit): AuthApiService {
@@ -112,5 +117,23 @@ object NetworkModule {
     @Singleton
     fun provideOrderApiService(retrofit: Retrofit): OrderApiService {
         return retrofit.create(OrderApiService::class.java)
+    }
+    
+    @Provides
+    @Singleton
+    fun provideCartApiService(retrofit: Retrofit): CartApiService {
+        return retrofit.create(CartApiService::class.java)
+    }
+    
+    @Provides
+    @Singleton
+    fun provideAdminApiService(retrofit: Retrofit): AdminApiService {
+        return retrofit.create(AdminApiService::class.java)
+    }
+    
+    @Provides
+    @Singleton
+    fun provideDeliveryApiService(retrofit: Retrofit): DeliveryApiService {
+        return retrofit.create(DeliveryApiService::class.java)
     }
 } 

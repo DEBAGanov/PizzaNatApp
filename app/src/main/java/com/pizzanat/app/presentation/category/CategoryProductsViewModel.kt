@@ -36,7 +36,7 @@ class CategoryProductsViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     
-    private val categoryId: Long = savedStateHandle.get<String>("categoryId")?.toLongOrNull() ?: 0L
+    private val categoryId: Long = savedStateHandle.get<Long>("categoryId") ?: 0L
     
     private val _uiState = MutableStateFlow(
         CategoryProductsUiState(categoryId = categoryId)

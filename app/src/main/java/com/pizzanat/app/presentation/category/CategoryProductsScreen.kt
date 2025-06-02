@@ -1,25 +1,32 @@
 /**
  * @file: CategoryProductsScreen.kt
- * @description: Экран списка продуктов выбранной категории с пагинацией
- * @dependencies: Compose, Hilt, Coil for images
+ * @description: Экран списка продуктов в стиле Fox Whiskers
+ * @dependencies: Compose, Hilt, FoxProductCard
  * @created: 2024-12-19
+ * @updated: 2024-12-20 - Переход на стиль Fox Whiskers
  */
 package com.pizzanat.app.presentation.category
 
 import android.util.Log
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -28,6 +35,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -35,8 +43,16 @@ import coil.request.ImageRequest
 import coil.request.CachePolicy
 import com.pizzanat.app.domain.entities.Product
 import com.pizzanat.app.presentation.theme.PizzaNatTheme
+import com.pizzanat.app.presentation.theme.YellowBright
+import com.pizzanat.app.presentation.theme.CardShadow
+import com.pizzanat.app.presentation.theme.CategoryPlateYellow
+import com.pizzanat.app.presentation.components.LazyProductGrid
+import com.pizzanat.app.presentation.components.OptimizedAsyncImage
+import com.pizzanat.app.presentation.components.FoxCircularProductImageMedium
+import com.pizzanat.app.presentation.components.FoxProductCard
 import java.text.NumberFormat
 import java.util.*
+import androidx.compose.ui.graphics.Color
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,7 +64,6 @@ fun CategoryProductsScreen(
     viewModel: CategoryProductsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val listState = rememberLazyListState()
     
     // Устанавливаем название категории в ViewModel
     LaunchedEffect(categoryName) {
@@ -57,48 +72,49 @@ fun CategoryProductsScreen(
         }
     }
     
-    // Обработка пагинации
-    LaunchedEffect(listState) {
-        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
-            .collect { lastVisibleIndex ->
-                if (lastVisibleIndex != null && 
-                    lastVisibleIndex >= uiState.products.size - 3 &&
-                    uiState.hasMoreData && 
-                    !uiState.isLoadingMore) {
-                    viewModel.loadMoreProducts()
-                }
-            }
-    }
-    
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background) // Серый фон Fox Whiskers
             .statusBarsPadding()
     ) {
-        // Top App Bar
-        TopAppBar(
-            title = {
-                Text(
-                    text = uiState.categoryName.ifBlank { "Продукты" },
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            },
-            navigationIcon = {
-                IconButton(onClick = onNavigateBack) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Назад",
-                        tint = MaterialTheme.colorScheme.primary
+        // Top Bar с желтой плашкой как в Fox Whiskers
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = CategoryPlateYellow
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Назад",
+                            tint = Color.Black
+                        )
+                    }
+                    
+                    Text(
+                        text = categoryName.ifBlank { "Продукты" },
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
                     )
                 }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
-        )
+            }
+        }
         
         // Content
         when {
@@ -108,23 +124,44 @@ fun CategoryProductsScreen(
             uiState.error != null && uiState.products.isEmpty() -> {
                 ErrorContent(
                     error = uiState.error ?: "Неизвестная ошибка",
-                    onRetry = viewModel::loadProducts,
-                    onDismissError = viewModel::clearError
+                    onRetry = { viewModel.loadProducts() },
+                    onDismissError = { viewModel.clearError() }
+                )
+            }
+            uiState.products.isEmpty() -> {
+                EmptyContent(
+                    categoryName = categoryName,
+                    onRetry = { viewModel.loadProducts() }
                 )
             }
             else -> {
-                ProductsContent(
-                    products = uiState.products,
-                    isRefreshing = uiState.isRefreshing,
-                    isLoadingMore = uiState.isLoadingMore,
-                    hasMoreData = uiState.hasMoreData,
-                    error = uiState.error,
-                    listState = listState,
-                    onProductClick = onNavigateToProduct,
-                    onAddToCart = onAddToCart,
-                    onRefresh = viewModel::refresh,
-                    onDismissError = viewModel::clearError
-                )
+                // Сетка товаров в стиле Fox Whiskers
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    contentPadding = PaddingValues(vertical = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(uiState.products) { product ->
+                        FoxProductCard(
+                            product = product,
+                            onProductClick = onNavigateToProduct,
+                            onAddToCart = onAddToCart
+                        )
+                    }
+                }
+            }
+        }
+        
+        // Показываем ошибку как Snackbar если есть продукты
+        if (uiState.error != null && uiState.products.isNotEmpty()) {
+            LaunchedEffect(uiState.error) {
+                // Автоматически скрываем ошибку через 3 секунды
+                kotlinx.coroutines.delay(3000)
+                viewModel.clearError()
             }
         }
     }
@@ -160,6 +197,76 @@ private fun ErrorContent(
     onRetry: () -> Unit,
     onDismissError: () -> Unit
 ) {
+    LaunchedEffect(error) {
+        // Автоматически скрываем ошибку через 5 секунд
+        kotlinx.coroutines.delay(5000)
+        onDismissError()
+    }
+    
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = "😕",
+                    style = MaterialTheme.typography.displayMedium
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text(
+                    text = "Упс! Что-то пошло не так",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text(
+                    text = error,
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Button(
+                    onClick = onRetry,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = Color.Black
+                    )
+                ) {
+                    Text("Попробовать снова")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyContent(
+    categoryName: String,
+    onRetry: () -> Unit
+) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -169,199 +276,43 @@ private fun ErrorContent(
                 .fillMaxWidth()
                 .padding(24.dp),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.errorContainer
-            )
+                containerColor = Color.White
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
             Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                modifier = Modifier.padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    text = "⚠️ Ошибка",
+                    text = "🍕",
+                    style = MaterialTheme.typography.displayLarge
+                )
+                Text(
+                    text = "Пусто в категории",
                     style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onErrorContainer
+                    fontWeight = FontWeight.Bold
                 )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
                 Text(
-                    text = error,
+                    text = if (categoryName.isNotBlank()) {
+                        "В категории \"$categoryName\" пока нет товаров"
+                    } else {
+                        "Попробуйте обновить список или выберите другую категорию"
+                    },
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = onDismissError,
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                    ) {
-                        Text("Закрыть")
-                    }
-                    
-                    Button(
-                        onClick = onRetry,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.onErrorContainer,
-                            contentColor = MaterialTheme.colorScheme.errorContainer
-                        )
-                    ) {
-                        Text("Повторить")
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ProductsContent(
-    products: List<Product>,
-    isRefreshing: Boolean,
-    isLoadingMore: Boolean,
-    hasMoreData: Boolean,
-    error: String?,
-    listState: androidx.compose.foundation.lazy.LazyListState,
-    onProductClick: (Product) -> Unit,
-    onAddToCart: (Product) -> Unit,
-    onRefresh: () -> Unit,
-    onDismissError: () -> Unit
-) {
-    Column {
-        // Error Snackbar
-        error?.let { errorMessage ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer
-                )
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = errorMessage,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.weight(1f)
+                Button(
+                    onClick = onRetry,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = Color.Black
                     )
-                    TextButton(onClick = onDismissError) {
-                        Text(
-                            text = "✕",
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                    }
+                ) {
+                    Text("Обновить")
                 }
-            }
-        }
-        
-        // Refresh indicator
-        if (isRefreshing) {
-            LinearProgressIndicator(
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-        
-        // Products List
-        if (products.isEmpty() && !isRefreshing) {
-            EmptyContent(onRefresh = onRefresh)
-        } else {
-            LazyColumn(
-                state = listState,
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                items(products) { product ->
-                    ProductCard(
-                        product = product,
-                        onClick = { onProductClick(product) },
-                        onAddToCart = { onAddToCart(product) }
-                    )
-                }
-                
-                // Loading more indicator
-                if (isLoadingMore) {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(32.dp),
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                }
-                
-                // End of list indicator
-                if (!hasMoreData && products.isNotEmpty()) {
-                    item {
-                        Text(
-                            text = "Все продукты загружены",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun EmptyContent(onRefresh: () -> Unit) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "🍕",
-                style = MaterialTheme.typography.displayMedium
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Text(
-                text = "Продукты не найдены",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            
-            Text(
-                text = "Попробуйте обновить список",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-            )
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            Button(onClick = onRefresh) {
-                Text("Обновить")
             }
         }
     }
@@ -376,114 +327,116 @@ private fun ProductCard(
 ) {
     Card(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(
+                elevation = 6.dp,
+                shape = RoundedCornerShape(16.dp),
+                ambientColor = CardShadow,
+                spotColor = CardShadow
+            ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), // Shadow уже добавлен
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
-        )
+        ),
+        shape = RoundedCornerShape(16.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Product Image
-            // Временное логирование для отладки
-            android.util.Log.d("CategoryProducts", "Loading image for ${product.name}: ${product.imageUrl}")
-            
-            // Добавляем timestamp чтобы обойти кэширование одинаковых файлов на S3
-            val imageUrlWithTimestamp = "${product.imageUrl}?t=${System.currentTimeMillis()}&id=${product.id}"
-            
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(imageUrlWithTimestamp)
-                    .crossfade(true)
-                    .memoryCachePolicy(CachePolicy.ENABLED)
-                    .diskCachePolicy(CachePolicy.ENABLED)
-                    .size(160, 160) // Явно указываем размер для лучшей загрузки
-                    .listener(
-                        onStart = {
-                            android.util.Log.d("CategoryProducts", "Image loading STARTED for ${product.name}")
-                        },
-                        onSuccess = { _, _ ->
-                            android.util.Log.d("CategoryProducts", "Image loading SUCCESS for ${product.name}")
-                        },
-                        onError = { _, error ->
-                            android.util.Log.e("CategoryProducts", "Image loading ERROR for ${product.name}: ${error.throwable}")
-                        }
-                    )
-                    .build(),
-                contentDescription = product.name,
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(RoundedCornerShape(12.dp)),
-                contentScale = ContentScale.Crop,
-                placeholder = painterResource(android.R.drawable.ic_menu_gallery),
-                error = painterResource(android.R.drawable.ic_menu_report_image)
+            // Круглое изображение продукта как на скриншотах
+            FoxCircularProductImageMedium(
+                imageUrl = product.imageUrl ?: "",
+                contentDescription = product.name
             )
-            
-            Spacer(modifier = Modifier.width(16.dp))
             
             // Product Info
             Column(
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
                     text = product.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    ),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 
                 if (product.description.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = product.description,
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontSize = 12.sp
+                        ),
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 
                 Text(
                     text = NumberFormat.getCurrencyInstance(Locale("ru", "RU"))
                         .format(product.price),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    ),
                     color = MaterialTheme.colorScheme.primary
                 )
             }
             
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            // Add to Cart Button
+            // Желтая кнопка добавления в корзину как на скриншотах
             if (product.available) {
-                IconButton(
+                FilledTonalButton(
                     onClick = onAddToCart,
-                    modifier = Modifier
-                        .size(48.dp),
-                    colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = YellowBright,
+                        contentColor = Color.Black
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.height(40.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.ShoppingCart,
-                        contentDescription = "Добавить в корзину"
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Добавить в корзину",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "Добавить",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
                     )
                 }
             } else {
-                Text(
-                    text = "Недоступен",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
-                )
+                Box(
+                    modifier = Modifier
+                        .background(
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = "Недоступен",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
             }
         }
     }

@@ -45,6 +45,8 @@ import com.pizzanat.app.presentation.admin.login.AdminLoginScreen
 import com.pizzanat.app.presentation.admin.dashboard.AdminDashboardScreen
 import com.pizzanat.app.presentation.admin.orders.AdminOrdersScreen
 import com.pizzanat.app.presentation.admin.products.AdminProductsScreen
+import androidx.navigation.navArgument
+import androidx.navigation.NavType
 
 /**
  * Маршруты навигации приложения
@@ -70,7 +72,7 @@ object PizzaNatRoutes {
     const val ADMIN_PRODUCTS = "admin_products"
     
     fun categoryProducts(categoryId: Long, categoryName: String = "") = 
-        "category_products/$categoryId/${categoryName}"
+        "category_products/$categoryId/$categoryName"
     fun productDetail(productId: Long) = "product_detail/$productId"
     fun payment(orderTotal: Double) = "payment/$orderTotal"
 }
@@ -161,7 +163,14 @@ fun PizzaNatNavigation(
         }
         
         // Экран продуктов категории
-        composable(PizzaNatRoutes.CATEGORY_PRODUCTS) { backStackEntry ->
+        composable(
+            route = "category_products/{categoryId}/{categoryName}",
+            arguments = listOf(
+                navArgument("categoryId") { type = NavType.LongType },
+                navArgument("categoryName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val categoryId = backStackEntry.arguments?.getLong("categoryId") ?: 0L
             val categoryName = backStackEntry.arguments?.getString("categoryName") ?: ""
             CategoryProductsScreen(
                 categoryName = categoryName,
@@ -170,15 +179,21 @@ fun PizzaNatNavigation(
                     navController.navigate(PizzaNatRoutes.productDetail(product.id))
                 },
                 onAddToCart = { product ->
-                    // TODO: Implement add to cart functionality
-                    // Будет реализовано в Этапе 4
+                    // Handle add to cart (can show snackbar here)
                 }
             )
         }
         
         // Экран детальной информации о продукте
-        composable(PizzaNatRoutes.PRODUCT_DETAIL) {
+        composable(
+            route = "product_detail/{productId}",
+            arguments = listOf(
+                navArgument("productId") { type = NavType.LongType }
+            )
+        ) { backStackEntry ->
+            val productId = backStackEntry.arguments?.getLong("productId") ?: 0L
             ProductDetailScreen(
+                productId = productId,
                 onNavigateBack = { navController.navigateUp() },
                 onNavigateToCart = {
                     navController.navigate(PizzaNatRoutes.CART)

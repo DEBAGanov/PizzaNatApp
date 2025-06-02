@@ -62,13 +62,14 @@ interface OrderApiService {
     /**
      * Получить все заказы (только для админа)
      * GET /api/v1/admin/orders
+     * Возвращает Spring Boot Page структуру
      */
     @GET("admin/orders")
     suspend fun getAllOrders(
         @Query("status") status: String? = null,
         @Query("page") page: Int = 0,
         @Query("size") size: Int = 20
-    ): Response<OrdersResponse>
+    ): Response<AdminOrdersPageResponse>
     
     /**
      * Получить статистику заказов (только для админа)
