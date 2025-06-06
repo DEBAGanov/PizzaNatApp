@@ -6,6 +6,7 @@
  */
 package com.pizzanat.app.presentation.admin.orders
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -20,12 +21,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pizzanat.app.domain.entities.Order
 import com.pizzanat.app.domain.entities.OrderStatus
+import com.pizzanat.app.domain.entities.OrderItem
+import com.pizzanat.app.domain.entities.DeliveryMethod
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,6 +40,13 @@ fun AdminOrdersScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showStatusDialog by remember { mutableStateOf<Pair<Order, OrderStatus>?>(null) }
+    
+    // Показываем сообщение о результате теста API
+    uiState.testApiSuccess?.let { message ->
+        LaunchedEffect(message) {
+            // Сообщение автоматически очистится через 3 секунды в ViewModel
+        }
+    }
     
     Column(
         modifier = Modifier.fillMaxSize()
@@ -57,6 +68,13 @@ fun AdminOrdersScreen(
                 }
             },
             actions = {
+                // Тестовая кнопка для отладки API
+                IconButton(onClick = viewModel::testApiOrders) {
+                    Icon(
+                        imageVector = Icons.Default.Build,
+                        contentDescription = "Тестировать API"
+                    )
+                }
                 IconButton(onClick = viewModel::refreshOrders) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
@@ -71,6 +89,25 @@ fun AdminOrdersScreen(
                 actionIconContentColor = MaterialTheme.colorScheme.onPrimary
             )
         )
+        
+        // Показываем сообщение о тестировании API
+        uiState.testApiSuccess?.let { message ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            ) {
+                Text(
+                    text = "🧪 $message",
+                    modifier = Modifier.padding(16.dp),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
         
         when {
             uiState.isLoading -> {
@@ -143,35 +180,47 @@ private fun ErrorContent(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.errorContainer
         )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
                 imageVector = Icons.Default.Warning,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onErrorContainer,
+                tint = MaterialTheme.colorScheme.error,
                 modifier = Modifier.size(48.dp)
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = "Ошибка загрузки заказов",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.error,
+                textAlign = TextAlign.Center
             )
             
             Text(
                 text = error,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onErrorContainer,
+                textAlign = TextAlign.Center,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
             
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedButton(onClick = onDismiss) {
-                    Text("Закрыть")
+                TextButton(onClick = onDismiss) {
+                    Text("Понятно")
                 }
-                Button(onClick = onRetry) {
+                TextButton(onClick = onRetry) {
                     Text("Повторить")
                 }
             }
@@ -179,6 +228,7 @@ private fun ErrorContent(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun OrdersContent(
     uiState: AdminOrdersUiState,
@@ -187,34 +237,38 @@ private fun OrdersContent(
     onStatusChangeRequest: (Order, OrderStatus) -> Unit,
     onRefresh: () -> Unit
 ) {
-    Column {
-        // Search and Filters
-        SearchAndFiltersSection(
-            searchQuery = uiState.searchQuery,
-            selectedStatus = uiState.selectedStatusFilter,
-            onSearchQueryChanged = onSearchQueryChanged,
-            onStatusFilterChanged = onStatusFilterChanged
-        )
-        
-        // Loading indicator for refresh
+    Column(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        // Показываем индикатор обновления
         if (uiState.isRefreshing) {
             LinearProgressIndicator(
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.primary
+                modifier = Modifier.fillMaxWidth()
             )
         }
         
-        // Orders List
-        if (uiState.filteredOrders.isEmpty()) {
+        // Фильтры и поиск
+        FiltersSection(
+            selectedStatus = uiState.selectedStatusFilter,
+            searchQuery = uiState.searchQuery,
+            onStatusFilterChanged = onStatusFilterChanged,
+            onSearchQueryChanged = onSearchQueryChanged
+        )
+        
+        // Список заказов
+        val orders = uiState.filteredOrders
+        if (orders.isEmpty()) {
             EmptyOrdersContent()
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(vertical = 16.dp)
             ) {
-                items(uiState.filteredOrders) { order ->
-                    OrderCard(
+                items(orders) { order ->
+                    AdminOrderCard(
                         order = order,
                         isUpdating = uiState.updatingOrderId == order.id,
                         onStatusChangeRequest = onStatusChangeRequest
@@ -225,13 +279,12 @@ private fun OrdersContent(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SearchAndFiltersSection(
-    searchQuery: String,
+private fun FiltersSection(
     selectedStatus: OrderStatus?,
-    onSearchQueryChanged: (String) -> Unit,
-    onStatusFilterChanged: (OrderStatus?) -> Unit
+    searchQuery: String,
+    onStatusFilterChanged: (OrderStatus?) -> Unit,
+    onSearchQueryChanged: (String) -> Unit
 ) {
     Column(
         modifier = Modifier.padding(16.dp),
@@ -321,7 +374,7 @@ private fun EmptyOrdersContent() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun OrderCard(
+private fun AdminOrderCard(
     order: Order,
     isUpdating: Boolean,
     onStatusChangeRequest: (Order, OrderStatus) -> Unit
@@ -330,12 +383,14 @@ private fun OrderCard(
     
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
         ) {
-            // Order Header
+            // Заголовок заказа с админскими функциями
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -358,7 +413,8 @@ private fun OrderCard(
                         )
                     }
                     
-                    StatusChip(
+                    // Кликабельный статус для изменения
+                    AdminStatusChip(
                         status = order.status,
                         onClick = { showStatusMenu = true }
                     )
@@ -367,103 +423,215 @@ private fun OrderCard(
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            // Customer Info
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+            // Информация о заказе
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = order.customerName,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Text(
-                        text = order.customerPhone,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                    )
-                    Text(
-                        text = order.deliveryAddress,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                AdminOrderInfoRow(
+                    icon = Icons.Default.DateRange,
+                    label = "Дата",
+                    value = order.createdAt.format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))
+                )
+                
+                AdminOrderInfoRow(
+                    icon = Icons.Default.Star,
+                    label = "Сумма",
+                    value = "${order.totalAmount}₽"
+                )
+                
+                AdminOrderInfoRow(
+                    icon = Icons.Default.Person,
+                    label = "Клиент",
+                    value = order.customerName
+                )
+                
+                AdminOrderInfoRow(
+                    icon = Icons.Default.Phone,
+                    label = "Телефон",
+                    value = order.customerPhone
+                )
+                
+                if (order.deliveryMethod == DeliveryMethod.DELIVERY && !order.deliveryAddress.isNullOrBlank()) {
+                    AdminOrderInfoRow(
+                        icon = Icons.Default.LocationOn,
+                        label = "Адрес",
+                        value = order.deliveryAddress
                     )
                 }
                 
+                AdminOrderInfoRow(
+                    icon = Icons.Default.AccountCircle,
+                    label = "Оплата",
+                    value = order.paymentMethod?.displayName ?: "Не указана"
+                )
+                
+                AdminOrderInfoRow(
+                    icon = Icons.Default.Home,
+                    label = "Доставка",
+                    value = order.deliveryMethod?.displayName ?: "Не указана"
+                )
+            }
+            
+            // Товары в заказе
+            if (order.items.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Text(
+                    text = "Товары:",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                
                 Column(
-                    horizontalAlignment = Alignment.End
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Text(
-                        text = "${order.totalAmount.toInt()} ₽",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = order.createdAt.format(DateTimeFormatter.ofPattern("dd.MM HH:mm")),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                    )
+                    order.items.forEach { item ->
+                        AdminOrderItemRow(item = item)
+                    }
                 }
             }
             
-            // Notes (if any)
-            if (order.notes.isNotBlank()) {
+            if (!order.notes.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
-                ) {
-                    Text(
-                        text = "💬 ${order.notes}",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(8.dp)
-                    )
-                }
+                
+                Text(
+                    text = "Комментарий: ${order.notes}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .padding(8.dp)
+                )
             }
-            
-            // Status Change Menu
-            DropdownMenu(
-                expanded = showStatusMenu,
-                onDismissRequest = { showStatusMenu = false }
-            ) {
-                OrderStatus.values().forEach { status ->
-                    DropdownMenuItem(
-                        text = { Text(getStatusDisplayName(status)) },
-                        onClick = {
-                            onStatusChangeRequest(order, status)
-                            showStatusMenu = false
-                        },
-                        enabled = status != order.status
-                    )
-                }
+        }
+    }
+    
+    // Dropdown menu для изменения статуса
+    DropdownMenu(
+        expanded = showStatusMenu,
+        onDismissRequest = { showStatusMenu = false }
+    ) {
+        OrderStatus.values().forEach { status ->
+            if (status != order.status) {
+                DropdownMenuItem(
+                    text = { Text(getStatusDisplayName(status)) },
+                    onClick = {
+                        onStatusChangeRequest(order, status)
+                        showStatusMenu = false
+                    }
+                )
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun StatusChip(
+private fun AdminStatusChip(
     status: OrderStatus,
     onClick: () -> Unit
 ) {
-    Card(
-        onClick = onClick,
-        colors = CardDefaults.cardColors(
-            containerColor = getStatusColor(status).copy(alpha = 0.1f)
-        ),
-        shape = RoundedCornerShape(16.dp)
+    val (backgroundColor, contentColor) = when (status) {
+        OrderStatus.PENDING -> MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
+        OrderStatus.CONFIRMED -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
+        OrderStatus.PREPARING -> MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
+        OrderStatus.READY -> MaterialTheme.colorScheme.successContainer to MaterialTheme.colorScheme.onSuccessContainer
+        OrderStatus.DELIVERING -> MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
+        OrderStatus.DELIVERED -> MaterialTheme.colorScheme.successContainer to MaterialTheme.colorScheme.onSuccessContainer
+        OrderStatus.CANCELLED -> MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
+    }
+    
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = backgroundColor,
+        onClick = onClick
     ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+        ) {
+            Text(
+                text = status.displayName,
+                style = MaterialTheme.typography.labelSmall,
+                color = contentColor
+            )
+            Icon(
+                imageVector = Icons.Default.ArrowDropDown,
+                contentDescription = "Изменить статус",
+                modifier = Modifier.size(16.dp),
+                tint = contentColor
+            )
+        }
+    }
+}
+
+@Composable
+private fun AdminOrderInfoRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    value: String
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+        )
+        
         Text(
-            text = getStatusDisplayName(status),
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            style = MaterialTheme.typography.labelSmall,
-            color = getStatusColor(status),
+            text = "$label:",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+            modifier = Modifier.width(70.dp)
+        )
+        
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+private fun AdminOrderItemRow(item: OrderItem) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(8.dp)
+            )
+            .padding(12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = item.productName,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = "${item.productPrice}₽ × ${item.quantity}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            )
+        }
+        
+        Text(
+            text = "${item.totalPrice}₽",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.primary
         )
     }
 }
@@ -509,7 +677,7 @@ private fun StatusChangeDialog(
 
 private fun getStatusDisplayName(status: OrderStatus): String {
     return when (status) {
-        OrderStatus.PENDING -> "Ожидает"
+        OrderStatus.PENDING -> "Ожидает подтверждения"
         OrderStatus.CONFIRMED -> "Подтвержден"
         OrderStatus.PREPARING -> "Готовится"
         OrderStatus.READY -> "Готов"
@@ -519,14 +687,9 @@ private fun getStatusDisplayName(status: OrderStatus): String {
     }
 }
 
-private fun getStatusColor(status: OrderStatus): Color {
-    return when (status) {
-        OrderStatus.PENDING -> Color(0xFFFFA726)
-        OrderStatus.CONFIRMED -> Color(0xFF42A5F5)
-        OrderStatus.PREPARING -> Color(0xFF7E57C2)
-        OrderStatus.READY -> Color(0xFF4CAF50)
-        OrderStatus.DELIVERING -> Color(0xFF26C6DA)
-        OrderStatus.DELIVERED -> Color(0xFF66BB6A)
-        OrderStatus.CANCELLED -> Color(0xFFEF5350)
-    }
-} 
+// Расширение ColorScheme для дополнительных цветов
+private val ColorScheme.successContainer: androidx.compose.ui.graphics.Color
+    get() = androidx.compose.ui.graphics.Color(0xFF4CAF50).copy(alpha = 0.12f)
+
+private val ColorScheme.onSuccessContainer: androidx.compose.ui.graphics.Color
+    get() = androidx.compose.ui.graphics.Color(0xFF1B5E20) 

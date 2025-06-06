@@ -34,16 +34,16 @@ class ProductDetailViewModel @Inject constructor(
     private val addToCartUseCase: AddToCartUseCase,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
-    
+
     private val _uiState = MutableStateFlow(ProductDetailUiState())
     val uiState: StateFlow<ProductDetailUiState> = _uiState.asStateFlow()
-    
+
     private var currentProductId: Long = 0L
-    
+
     // Публичный метод для загрузки продукта по ID
     fun loadProduct(productId: Long) {
         currentProductId = productId
-        
+
         if (productId == 0L) {
             _uiState.value = _uiState.value.copy(
                 error = "Неверный ID продукта",
@@ -54,7 +54,7 @@ class ProductDetailViewModel @Inject constructor(
 
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-            
+
             try {
                 val result = getProductByIdUseCase(productId)
                 if (result.isSuccess) {
@@ -78,19 +78,19 @@ class ProductDetailViewModel @Inject constructor(
             }
         }
     }
-    
+
     fun updateQuantity(quantity: Int) {
         if (quantity in 1..10) {
             _uiState.value = _uiState.value.copy(selectedQuantity = quantity)
         }
     }
-    
+
     fun addToCart() {
         val currentProduct = _uiState.value.product ?: return
-        
+
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isAddingToCart = true)
-            
+
             try {
                 val result = addToCartUseCase(currentProduct, _uiState.value.selectedQuantity)
                 if (result.isSuccess) {
@@ -113,16 +113,16 @@ class ProductDetailViewModel @Inject constructor(
             }
         }
     }
-    
+
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
     }
-    
+
     fun hideAddToCartSuccess() {
         _uiState.value = _uiState.value.copy(showAddToCartSuccess = false)
     }
-    
+
     fun retry() {
         loadProduct(currentProductId)
     }
-} 
+}

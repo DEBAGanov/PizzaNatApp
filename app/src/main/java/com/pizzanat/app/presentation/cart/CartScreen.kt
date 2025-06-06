@@ -342,9 +342,9 @@ private fun CartContent(
                     cartItem = cartItem,
                     onItemClick = onItemClick,
                     onUpdateQuantity = { newQuantity ->
-                        onUpdateQuantity(cartItem.productId, newQuantity)
+                        onUpdateQuantity(cartItem.id, newQuantity)
                     },
-                    onRemove = { onRemoveItem(cartItem.productId) }
+                    onRemove = { onRemoveItem(cartItem.id) }
                 )
             }
         }

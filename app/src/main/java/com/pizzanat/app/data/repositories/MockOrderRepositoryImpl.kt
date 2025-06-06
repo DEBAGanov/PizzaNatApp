@@ -21,13 +21,90 @@ class MockOrderRepositoryImpl @Inject constructor() : OrderRepository {
     private val mockOrders = mutableListOf<Order>()
     private var nextOrderId = 1L
 
+    init {
+        // Добавляем тестовые заказы для демонстрации
+        createTestOrders()
+    }
+
+    private fun createTestOrders() {
+        // Тестовый заказ 1 для пользователя с ID=1 (первый зарегистрированный)
+        val testOrder1 = Order(
+            id = nextOrderId++,
+            userId = 1L,
+            items = listOf(
+                OrderItem(
+                    id = 1L,
+                    orderId = 1L,
+                    productId = 1L,
+                    productName = "Маргарита",
+                    productPrice = 450.0,
+                    quantity = 2,
+                    totalPrice = 900.0
+                ),
+                OrderItem(
+                    id = 2L,
+                    orderId = 1L,
+                    productId = 2L,
+                    productName = "Пепперони",
+                    productPrice = 520.0,
+                    quantity = 1,
+                    totalPrice = 520.0
+                )
+            ),
+            status = OrderStatus.PENDING,
+            totalAmount = 1420.0,
+            deliveryMethod = DeliveryMethod.DELIVERY,
+            deliveryAddress = "ул. Тестовая, д. 1, кв. 1",
+            deliveryCost = 200.0,
+            paymentMethod = PaymentMethod.CASH,
+            customerPhone = "+79001234567",
+            customerName = "Тестовый Пользователь",
+            notes = "Тестовый заказ",
+            estimatedDeliveryTime = LocalDateTime.now().plusMinutes(30),
+            createdAt = LocalDateTime.now().minusHours(1),
+            updatedAt = LocalDateTime.now().minusHours(1)
+        )
+
+        // Тестовый заказ 2 для пользователя с ID=1
+        val testOrder2 = Order(
+            id = nextOrderId++,
+            userId = 1L,
+            items = listOf(
+                OrderItem(
+                    id = 3L,
+                    orderId = 2L,
+                    productId = 3L,
+                    productName = "Четыре сыра",
+                    productPrice = 580.0,
+                    quantity = 1,
+                    totalPrice = 580.0
+                )
+            ),
+            status = OrderStatus.DELIVERED,
+            totalAmount = 780.0,
+            deliveryMethod = DeliveryMethod.DELIVERY,
+            deliveryAddress = "ул. Тестовая, д. 1, кв. 1",
+            deliveryCost = 200.0,
+            paymentMethod = PaymentMethod.CARD_ON_DELIVERY,
+            customerPhone = "+79001234567",
+            customerName = "Тестовый Пользователь",
+            notes = "",
+            estimatedDeliveryTime = LocalDateTime.now().minusHours(2),
+            createdAt = LocalDateTime.now().minusHours(3),
+            updatedAt = LocalDateTime.now().minusHours(2)
+        )
+
+        mockOrders.addAll(listOf(testOrder1, testOrder2))
+        nextOrderId = 3L
+    }
+
     override fun getUserOrdersFlow(userId: Long): Flow<List<Order>> = flow {
-        while (true) {
-            val result = getUserOrders(userId)
-            if (result.isSuccess) {
-                result.getOrNull()?.let { emit(it) }
-            }
-            delay(10000)
+        val result = getUserOrders(userId)
+        if (result.isSuccess) {
+            val orders = result.getOrNull() ?: emptyList()
+            emit(orders)
+        } else {
+            emit(emptyList())
         }
     }
 

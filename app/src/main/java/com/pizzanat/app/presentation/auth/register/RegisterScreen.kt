@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pizzanat.app.presentation.theme.PizzaNatTheme
+import com.pizzanat.app.presentation.components.PhoneTextField
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -180,26 +181,17 @@ fun RegisterScreen(
         Spacer(modifier = Modifier.height(16.dp))
         
         // Телефон
-        OutlinedTextField(
+        PhoneTextField(
             value = uiState.phone,
             onValueChange = viewModel::onPhoneChanged,
-            label = { Text("Телефон") },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Default.Phone,
-                    contentDescription = "Телефон"
-                )
-            },
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Phone,
-                imeAction = ImeAction.Next
-            ),
+            label = "Телефон",
+            isError = uiState.phoneError != null,
+            errorMessage = uiState.phoneError,
+            modifier = Modifier.fillMaxWidth(),
             keyboardActions = KeyboardActions(
                 onNext = { focusManager.moveFocus(FocusDirection.Down) }
             ),
-            isError = uiState.phoneError != null,
-            supportingText = uiState.phoneError?.let { { Text(it) } },
-            modifier = Modifier.fillMaxWidth()
+            imeAction = ImeAction.Next
         )
         
         Spacer(modifier = Modifier.height(16.dp))

@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pizzanat.app.domain.entities.Order
+import com.pizzanat.app.domain.entities.OrderItem
 import com.pizzanat.app.domain.entities.OrderStatus
 import com.pizzanat.app.domain.entities.PaymentMethod
 import com.pizzanat.app.domain.entities.DeliveryMethod
@@ -451,6 +452,26 @@ private fun OrderCard(order: Order) {
                 )
             }
             
+            // Товары в заказе
+            if (order.items.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Text(
+                    text = "Товары:",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    order.items.forEach { item ->
+                        OrderItemRow(item = item)
+                    }
+                }
+            }
+            
             if (!order.notes.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 
@@ -524,6 +545,41 @@ private fun OrderInfoRow(
             text = value,
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+private fun OrderItemRow(item: OrderItem) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(8.dp)
+            )
+            .padding(12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = item.productName,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = "${item.productPrice}₽ × ${item.quantity}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            )
+        }
+        
+        Text(
+            text = "${item.totalPrice}₽",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.primary
         )
     }
 }

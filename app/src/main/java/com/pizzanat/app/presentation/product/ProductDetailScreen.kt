@@ -3,7 +3,7 @@
  * @description: Экран детальной информации о продукте в стиле Fox Whiskers
  * @dependencies: Compose, Hilt, FoxCircularProductImage, FoxQuantitySelector
  * @created: 2024-12-19
- * @updated: 2024-12-20 - Переход на стиль Fox Whiskers
+ * @updated: 2024-12-20 - Переход на стиль Fox Whiskers + FloatingCartButton
  */
 package com.pizzanat.app.presentation.product
 
@@ -36,6 +36,7 @@ import com.pizzanat.app.domain.entities.Product
 import com.pizzanat.app.presentation.theme.PizzaNatTheme
 import com.pizzanat.app.presentation.theme.CategoryPlateYellow
 import com.pizzanat.app.presentation.components.FoxCircularProductImageLarge
+import com.pizzanat.app.presentation.components.FloatingCartButton
 import java.text.NumberFormat
 import java.util.*
 
@@ -57,40 +58,54 @@ fun ProductDetailScreen(
         }
     }
 
-    // Серый фон в стиле Fox Whiskers
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
+    Box(
+        modifier = Modifier.fillMaxSize()
     ) {
-        when {
-            uiState.isLoading -> {
-                LoadingContent()
+        // Серый фон в стиле Fox Whiskers
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .statusBarsPadding()
+        ) {
+            when {
+                uiState.isLoading -> {
+                    LoadingContent()
+                }
+                
+                uiState.error != null -> {
+                    ErrorContent(
+                        error = uiState.error ?: "Неизвестная ошибка",
+                        onRetry = { viewModel.loadProduct(productId) },
+                        onNavigateBack = onNavigateBack
+                    )
+                }
+                
+                uiState.product == null -> {
+                    NotFoundContent(onNavigateBack = onNavigateBack)
+                }
+                
+                else -> {
+                    ProductContent(
+                        product = uiState.product!!,
+                        uiState = uiState,
+                        onNavigateBack = onNavigateBack,
+                        onNavigateToCart = onNavigateToCart,
+                        onAddToCart = viewModel::addToCart,
+                        onHideSuccess = viewModel::hideAddToCartSuccess
+                    )
+                }
             }
-            
-            uiState.error != null -> {
-                ErrorContent(
-                    error = uiState.error ?: "Неизвестная ошибка",
-                    onRetry = { viewModel.loadProduct(productId) },
-                    onNavigateBack = onNavigateBack
-                )
-            }
-            
-            uiState.product == null -> {
-                NotFoundContent(onNavigateBack = onNavigateBack)
-            }
-            
-            else -> {
-                ProductContent(
-                    product = uiState.product!!,
-                    uiState = uiState,
-                    onNavigateBack = onNavigateBack,
-                    onNavigateToCart = onNavigateToCart,
-                    onAddToCart = viewModel::addToCart,
-                    onHideSuccess = viewModel::hideAddToCartSuccess
-                )
-            }
+        }
+
+        // Floating кнопка корзины только когда продукт загружен
+        if (uiState.product != null) {
+            FloatingCartButton(
+                onNavigateToCart = onNavigateToCart,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 16.dp)
+            )
         }
     }
 }
@@ -288,8 +303,8 @@ private fun ProductContent(
                 onHideSuccess = onHideSuccess
             )
             
-            // Отступ снизу
-            Spacer(modifier = Modifier.height(32.dp))
+            // Отступ снизу для floating кнопки
+            Spacer(modifier = Modifier.height(80.dp))
         }
     }
 }

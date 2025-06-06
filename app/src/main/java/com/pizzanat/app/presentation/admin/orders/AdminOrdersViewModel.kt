@@ -6,6 +6,7 @@
  */
 package com.pizzanat.app.presentation.admin.orders
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pizzanat.app.domain.entities.Order
@@ -29,7 +30,8 @@ data class AdminOrdersUiState(
     val selectedStatusFilter: OrderStatus? = null,
     val searchQuery: String = "",
     val isRefreshing: Boolean = false,
-    val updatingOrderId: Long? = null
+    val updatingOrderId: Long? = null,
+    val testApiSuccess: String? = null // Для тестирования API
 )
 
 @HiltViewModel
@@ -56,10 +58,15 @@ class AdminOrdersViewModel @Inject constructor(
             )
             
             try {
+                Log.d("AdminOrdersViewModel", "Начинаем загрузку заказов для админ панели")
                 val result = getAllOrdersUseCase()
                 
                 if (result.isSuccess) {
                     val orders = result.getOrNull() ?: emptyList()
+                    Log.d("AdminOrdersViewModel", "✅ Загружено заказов для админа: ${orders.size}")
+                    orders.forEach { order ->
+                        Log.d("AdminOrdersViewModel", "Админ заказ: ID=${order.id}, клиент=${order.customerName}, статус=${order.status}, сумма=${order.totalAmount}")
+                    }
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         orders = orders,
@@ -67,12 +74,15 @@ class AdminOrdersViewModel @Inject constructor(
                     )
                     applyFilters()
                 } else {
+                    val errorMsg = result.exceptionOrNull()?.message ?: "Ошибка загрузки заказов"
+                    Log.e("AdminOrdersViewModel", "❌ Ошибка загрузки заказов: $errorMsg")
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        error = result.exceptionOrNull()?.message ?: "Ошибка загрузки заказов"
+                        error = errorMsg
                     )
                 }
             } catch (e: Exception) {
+                Log.e("AdminOrdersViewModel", "❌ Исключение при загрузке заказов: ${e.message}")
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = e.message ?: "Неизвестная ошибка"
@@ -86,10 +96,12 @@ class AdminOrdersViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isRefreshing = true)
             
             try {
+                Log.d("AdminOrdersViewModel", "Обновляем заказы админ панели")
                 val result = getAllOrdersUseCase()
                 
                 if (result.isSuccess) {
                     val orders = result.getOrNull() ?: emptyList()
+                    Log.d("AdminOrdersViewModel", "✅ Обновлено заказов: ${orders.size}")
                     _uiState.value = _uiState.value.copy(
                         orders = orders,
                         isRefreshing = false,
@@ -116,9 +128,11 @@ class AdminOrdersViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(updatingOrderId = orderId)
             
             try {
+                Log.d("AdminOrdersViewModel", "Обновляем статус заказа $orderId на $newStatus")
                 val result = updateOrderStatusUseCase(orderId, newStatus)
                 
                 if (result.isSuccess) {
+                    Log.d("AdminOrdersViewModel", "✅ Статус заказа $orderId успешно обновлен")
                     // Обновляем заказ в локальном списке
                     val updatedOrders = _uiState.value.orders.map { order ->
                         if (order.id == orderId) {
@@ -135,17 +149,61 @@ class AdminOrdersViewModel @Inject constructor(
                     )
                     applyFilters()
                 } else {
+                    val errorMsg = "Ошибка обновления статуса: ${result.exceptionOrNull()?.message}"
+                    Log.e("AdminOrdersViewModel", "❌ $errorMsg")
                     _uiState.value = _uiState.value.copy(
                         updatingOrderId = null,
-                        error = "Ошибка обновления статуса: ${result.exceptionOrNull()?.message}"
+                        error = errorMsg
                     )
                 }
             } catch (e: Exception) {
+                Log.e("AdminOrdersViewModel", "❌ Исключение при обновлении статуса: ${e.message}")
                 _uiState.value = _uiState.value.copy(
                     updatingOrderId = null,
                     error = "Ошибка: ${e.message}"
                 )
             }
+        }
+    }
+    
+    /**
+     * Функция для тестирования API админской панели
+     */
+    fun testApiOrders() {
+        viewModelScope.launch {
+            try {
+                Log.d("AdminOrdersViewModel", "🧪 ТЕСТ: Принудительная проверка API админских заказов")
+                val result = getAllOrdersUseCase()
+                
+                if (result.isSuccess) {
+                    val orders = result.getOrNull() ?: emptyList()
+                    Log.d("AdminOrdersViewModel", "🧪 ТЕСТ API успешен: ${orders.size} заказов")
+                    
+                    _uiState.value = _uiState.value.copy(
+                        testApiSuccess = "API работает! Загружено ${orders.size} заказов",
+                        orders = orders,
+                        error = null
+                    )
+                    applyFilters()
+                } else {
+                    val errorMsg = result.exceptionOrNull()?.message ?: "API недоступен"
+                    Log.e("AdminOrdersViewModel", "🧪 ТЕСТ API неудачен: $errorMsg")
+                    _uiState.value = _uiState.value.copy(
+                        testApiSuccess = null,
+                        error = "Тест API: $errorMsg"
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e("AdminOrdersViewModel", "🧪 ТЕСТ API исключение: ${e.message}")
+                _uiState.value = _uiState.value.copy(
+                    testApiSuccess = null,
+                    error = "Тест API: ${e.message}"
+                )
+            }
+            
+            // Очищаем сообщение о тесте через 3 секунды
+            delay(3000)
+            _uiState.value = _uiState.value.copy(testApiSuccess = null)
         }
     }
     

@@ -38,30 +38,34 @@ class ProfileViewModel @Inject constructor(
     private val getUserOrdersUseCase: GetUserOrdersUseCase,
     private val logoutUseCase: LogoutUseCase
 ) : ViewModel() {
-    
+
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
-    
+
     init {
         loadUserProfile()
     }
-    
+
     private fun loadUserProfile() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-            
+
             try {
                 val userResult = getCurrentUserUseCase()
                 if (userResult.isSuccess) {
                     val user = userResult.getOrNull()
+                    Log.d("ProfileViewModel", "Пользователь загружен: ID=${user?.id}, email=${user?.email}")
                     _uiState.value = _uiState.value.copy(
                         user = user,
                         isLoading = false
                     )
-                    
+
                     // Загружаем заказы пользователя
                     if (user != null) {
+                        Log.d("ProfileViewModel", "Загружаем заказы для пользователя с ID: ${user.id}")
                         loadUserOrders(user.id)
+                    } else {
+                        Log.w("ProfileViewModel", "Пользователь null - заказы не загружаем")
                     }
                 } else {
                     val error = userResult.exceptionOrNull()?.message ?: "Ошибка загрузки профиля"
@@ -80,14 +84,18 @@ class ProfileViewModel @Inject constructor(
             }
         }
     }
-    
+
     private fun loadUserOrders(userId: Long) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isOrdersLoading = true, ordersError = null)
-            
+
             try {
+                Log.d("ProfileViewModel", "Начинаем загрузку заказов для пользователя: $userId")
                 getUserOrdersUseCase(userId).collect { orders ->
-                    Log.d("ProfileViewModel", "Загружено заказов: ${orders.size}")
+                    Log.d("ProfileViewModel", "Загружено заказов из Flow: ${orders.size}")
+                    orders.forEach { order ->
+                        Log.d("ProfileViewModel", "Заказ: ID=${order.id}, статус=${order.status}, сумма=${order.totalAmount}")
+                    }
                     _uiState.value = _uiState.value.copy(
                         userOrders = orders,
                         isOrdersLoading = false
@@ -102,11 +110,11 @@ class ProfileViewModel @Inject constructor(
             }
         }
     }
-    
+
     fun logout() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoggingOut = true, error = null)
-            
+
             try {
                 Log.d("ProfileViewModel", "Начинаем выход из аккаунта")
                 val result = logoutUseCase()
@@ -133,20 +141,20 @@ class ProfileViewModel @Inject constructor(
             }
         }
     }
-    
+
     fun refreshProfile() {
         loadUserProfile()
     }
-    
+
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
     }
-    
+
     fun clearOrdersError() {
         _uiState.value = _uiState.value.copy(ordersError = null)
     }
-    
+
     fun resetLogoutState() {
         _uiState.value = _uiState.value.copy(logoutCompleted = false)
     }
-} 
+}

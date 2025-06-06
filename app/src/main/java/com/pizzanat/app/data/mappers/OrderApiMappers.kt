@@ -10,6 +10,7 @@ import com.pizzanat.app.data.remote.dto.*
 import com.pizzanat.app.domain.entities.*
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import android.util.Log
 
 /**
  * Преобразование OrderDto в Order (domain)
@@ -29,15 +30,18 @@ fun OrderDto.toDomain(): Order {
                 "DELIVERING" -> OrderStatus.DELIVERING
                 "DELIVERED" -> OrderStatus.DELIVERED
                 "CANCELLED" -> OrderStatus.CANCELLED
-                else -> OrderStatus.PENDING
+                else -> {
+                    Log.w("OrderApiMappers", "Неизвестный статус заказа: $status, используем PENDING")
+                    OrderStatus.PENDING
+                }
             }
         },
-        items = items?.map { it.toDomain() } ?: emptyList(),
+        items = items?.map { it.toDomain(orderId = id) } ?: emptyList(),
         totalAmount = totalAmount,
         deliveryAddress = deliveryAddress,
         customerPhone = contactPhone,
         customerName = contactName,
-        notes = notes ?: comment ?: "", // Используем notes или comment, или пустую строку
+        notes = comment ?: notes ?: "", // API использует comment, а приложение notes
         paymentMethod = PaymentMethod.ONLINE_CARD, // По умолчанию, так как в DTO нет этого поля
         deliveryMethod = DeliveryMethod.DELIVERY, // По умолчанию, так как в DTO нет этого поля
         deliveryCost = deliveryFee,
@@ -50,15 +54,15 @@ fun OrderDto.toDomain(): Order {
 /**
  * Преобразование OrderItemDto в OrderItem (domain)
  */
-fun OrderItemDto.toDomain(): OrderItem {
+fun OrderItemDto.toDomain(orderId: Long = 0L): OrderItem {
     return OrderItem(
         id = id,
-        orderId = 0L, // В DTO нет orderId, будет установлен позже
+        orderId = orderId,
         productId = productId,
         productName = productName,
-        productPrice = productPrice ?: price, // Используем productPrice или price
+        productPrice = price, // API использует price, не productPrice
         quantity = quantity,
-        totalPrice = subtotal ?: (productPrice ?: price) * quantity // Используем subtotal или вычисляем
+        totalPrice = subtotal ?: (price * quantity) // Используем subtotal или вычисляем
     )
 }
 
@@ -80,14 +84,29 @@ fun AdminOrdersPageResponse.toDomainOrders(): List<Order> {
 
 /**
  * Преобразование строки даты в LocalDateTime
+ * Поддерживает ISO формат с микросекундами: 2025-06-05T16:32:37.577780
  */
 private fun parseDateTime(dateTimeString: String?): LocalDateTime {
     return if (!dateTimeString.isNullOrBlank()) {
         try {
+            // Сначала пробуем стандартный ISO формат
             LocalDateTime.parse(dateTimeString, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
         } catch (e: Exception) {
-            // Fallback на текущее время если парсинг не удался
-            LocalDateTime.now()
+            try {
+                // Если не получилось, пробуем формат с микросекундами
+                val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS")
+                LocalDateTime.parse(dateTimeString, formatter)
+            } catch (e2: Exception) {
+                try {
+                    // Последняя попытка - формат с миллисекундами  
+                    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS")
+                    LocalDateTime.parse(dateTimeString, formatter)
+                } catch (e3: Exception) {
+                    // Fallback на текущее время если ничего не получилось
+                    Log.w("OrderApiMappers", "Не удалось распарсить дату: $dateTimeString", e3)
+                    LocalDateTime.now()
+                }
+            }
         }
     } else {
         LocalDateTime.now()

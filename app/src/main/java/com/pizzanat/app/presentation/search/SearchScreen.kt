@@ -3,6 +3,7 @@
  * @description: Экран поиска продуктов с дебаунсом и недавними поисками
  * @dependencies: Compose, Hilt, Coil for images
  * @created: 2024-12-19
+ * @updated: 2024-12-20 - Добавлена FloatingCartButton
  */
 package com.pizzanat.app.presentation.search
 
@@ -38,6 +39,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.pizzanat.app.domain.entities.Product
 import com.pizzanat.app.presentation.theme.PizzaNatTheme
+import com.pizzanat.app.presentation.components.FloatingCartButton
 import java.text.NumberFormat
 import java.util.*
 
@@ -47,6 +49,7 @@ fun SearchScreen(
     onNavigateBack: () -> Unit = {},
     onNavigateToProduct: (Product) -> Unit = {},
     onAddToCart: (Product) -> Unit = {},
+    onNavigateToCart: () -> Unit = {},
     viewModel: SearchViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -58,49 +61,63 @@ fun SearchScreen(
         focusRequester.requestFocus()
     }
     
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
+    Box(
+        modifier = Modifier.fillMaxSize()
     ) {
-        // Search Bar
-        SearchBar(
-            query = uiState.query,
-            onQueryChange = viewModel::updateQuery,
-            onClearQuery = viewModel::clearQuery,
-            onBack = onNavigateBack,
-            focusRequester = focusRequester,
-            modifier = Modifier.padding(16.dp)
-        )
-        
-        // Content
-        when {
-            uiState.query.isBlank() -> {
-                EmptySearchContent(
-                    recentSearches = uiState.recentSearches,
-                    onRecentSearchClick = viewModel::selectRecentSearch,
-                    onClearRecentSearches = viewModel::clearRecentSearches
-                )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+        ) {
+            // Search Bar
+            SearchBar(
+                query = uiState.query,
+                onQueryChange = viewModel::updateQuery,
+                onClearQuery = viewModel::clearQuery,
+                onBack = onNavigateBack,
+                focusRequester = focusRequester,
+                modifier = Modifier.padding(16.dp)
+            )
+            
+            // Content
+            when {
+                uiState.query.isBlank() -> {
+                    EmptySearchContent(
+                        recentSearches = uiState.recentSearches,
+                        onRecentSearchClick = viewModel::selectRecentSearch,
+                        onClearRecentSearches = viewModel::clearRecentSearches
+                    )
+                }
+                uiState.isLoading -> {
+                    LoadingContent()
+                }
+                uiState.error != null -> {
+                    ErrorContent(
+                        error = uiState.error ?: "Ошибка поиска",
+                        onDismissError = viewModel::clearError
+                    )
+                }
+                uiState.showEmptyState -> {
+                    NoResultsContent(query = uiState.query)
+                }
+                else -> {
+                    SearchResultsContent(
+                        products = uiState.products,
+                        onProductClick = onNavigateToProduct,
+                        onAddToCart = onAddToCart
+                    )
+                }
             }
-            uiState.isLoading -> {
-                LoadingContent()
-            }
-            uiState.error != null -> {
-                ErrorContent(
-                    error = uiState.error ?: "Ошибка поиска",
-                    onDismissError = viewModel::clearError
-                )
-            }
-            uiState.showEmptyState -> {
-                NoResultsContent(query = uiState.query)
-            }
-            else -> {
-                SearchResultsContent(
-                    products = uiState.products,
-                    onProductClick = onNavigateToProduct,
-                    onAddToCart = onAddToCart
-                )
-            }
+        }
+
+        // Floating кнопка корзины (показываем когда есть результаты поиска)
+        if (uiState.products.isNotEmpty()) {
+            FloatingCartButton(
+                onNavigateToCart = onNavigateToCart,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 16.dp)
+            )
         }
     }
 }
@@ -391,7 +408,12 @@ private fun SearchResultsContent(
     onAddToCart: (Product) -> Unit
 ) {
     LazyColumn(
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(
+            start = 16.dp,
+            end = 16.dp,
+            top = 16.dp,
+            bottom = 80.dp // Дополнительное место для floating кнопки
+        ),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {

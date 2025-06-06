@@ -11,6 +11,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pizzanat.app.domain.entities.Product
 import com.pizzanat.app.domain.usecases.product.GetProductsByCategoryUseCase
+import com.pizzanat.app.domain.usecases.cart.AddToCartUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,30 +28,32 @@ data class CategoryProductsUiState(
     val hasMoreData: Boolean = true,
     val currentPage: Int = 0,
     val categoryId: Long = 0L,
-    val categoryName: String = ""
+    val categoryName: String = "",
+    val addToCartSuccess: String? = null
 )
 
 @HiltViewModel
 class CategoryProductsViewModel @Inject constructor(
     private val getProductsByCategoryUseCase: GetProductsByCategoryUseCase,
+    private val addToCartUseCase: AddToCartUseCase,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
-    
+
     private val categoryId: Long = savedStateHandle.get<Long>("categoryId") ?: 0L
-    
+
     private val _uiState = MutableStateFlow(
         CategoryProductsUiState(categoryId = categoryId)
     )
     val uiState: StateFlow<CategoryProductsUiState> = _uiState.asStateFlow()
-    
+
     companion object {
         private const val PAGE_SIZE = 20
     }
-    
+
     init {
         loadProducts()
     }
-    
+
     fun loadProducts() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
@@ -58,7 +61,7 @@ class CategoryProductsViewModel @Inject constructor(
                 error = null,
                 currentPage = 0
             )
-            
+
             try {
                 val result = getProductsByCategoryUseCase(categoryId, 0, PAGE_SIZE)
                 if (result.isSuccess) {
@@ -85,17 +88,17 @@ class CategoryProductsViewModel @Inject constructor(
             }
         }
     }
-    
+
     fun loadMoreProducts() {
         val currentState = _uiState.value
         if (currentState.isLoadingMore || !currentState.hasMoreData) return
-        
+
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
                 isLoadingMore = true,
                 error = null
             )
-            
+
             try {
                 val nextPage = currentState.currentPage + 1
                 val result = getProductsByCategoryUseCase(categoryId, nextPage, PAGE_SIZE)
@@ -122,14 +125,14 @@ class CategoryProductsViewModel @Inject constructor(
             }
         }
     }
-    
+
     fun refresh() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
                 isRefreshing = true,
                 error = null
             )
-            
+
             try {
                 val result = getProductsByCategoryUseCase(categoryId, 0, PAGE_SIZE)
                 if (result.isSuccess) {
@@ -156,12 +159,39 @@ class CategoryProductsViewModel @Inject constructor(
             }
         }
     }
-    
+
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
     }
-    
+
     fun setCategoryName(name: String) {
         _uiState.value = _uiState.value.copy(categoryName = name)
     }
-} 
+
+    fun addToCart(product: Product) {
+        viewModelScope.launch {
+            try {
+                val result = addToCartUseCase(product, 1)
+                if (result.isSuccess) {
+                    _uiState.value = _uiState.value.copy(
+                        addToCartSuccess = "Товар \"${product.name}\" добавлен в корзину"
+                    )
+                    // Автоматически скрываем сообщение через 3 секунды
+                    kotlinx.coroutines.delay(3000)
+                    clearAddToCartSuccess()
+                } else {
+                    val error = result.exceptionOrNull()?.message ?: "Ошибка добавления в корзину"
+                    _uiState.value = _uiState.value.copy(error = error)
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    error = e.message ?: "Произошла ошибка при добавлении в корзину"
+                )
+            }
+        }
+    }
+
+    fun clearAddToCartSuccess() {
+        _uiState.value = _uiState.value.copy(addToCartSuccess = null)
+    }
+}

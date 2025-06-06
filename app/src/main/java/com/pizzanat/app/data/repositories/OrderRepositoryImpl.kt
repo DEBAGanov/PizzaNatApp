@@ -11,6 +11,7 @@ import com.pizzanat.app.data.mappers.toDomain
 import com.pizzanat.app.data.mappers.toDomainOrders
 import com.pizzanat.app.data.remote.api.OrderApiService
 import com.pizzanat.app.data.remote.util.safeApiCall
+import com.pizzanat.app.data.remote.util.ApiResult
 import com.pizzanat.app.domain.entities.*
 import com.pizzanat.app.domain.repositories.OrderRepository
 import kotlinx.coroutines.Dispatchers
@@ -59,35 +60,95 @@ class OrderRepositoryImpl @Inject constructor(
     }
 
     override fun getUserOrdersFlow(userId: Long): Flow<List<Order>> = flow {
-        while (true) {
+        try {
             val result = getUserOrders(userId)
             if (result.isSuccess) {
-                result.getOrNull()?.let { emit(it) }
+                val orders = result.getOrNull() ?: emptyList()
+                Log.d("OrderRepository", "getUserOrdersFlow: Выдаем ${orders.size} заказов")
+                emit(orders)
+            } else {
+                Log.w("OrderRepository", "getUserOrdersFlow: Ошибка API, используем mock данные")
+                val mockResult = mockOrderRepository.getUserOrders(userId)
+                if (mockResult.isSuccess) {
+                    val mockOrders = mockResult.getOrNull() ?: emptyList()
+                    emit(mockOrders)
+                } else {
+                    emit(emptyList())
+                }
             }
-            kotlinx.coroutines.delay(10000) // Обновляем каждые 10 секунд
+        } catch (e: Exception) {
+            Log.e("OrderRepository", "getUserOrdersFlow: Исключение ${e.message}, используем mock данные")
+            try {
+                val mockResult = mockOrderRepository.getUserOrders(userId)
+                if (mockResult.isSuccess) {
+                    val mockOrders = mockResult.getOrNull() ?: emptyList()
+                    emit(mockOrders)
+                } else {
+                    emit(emptyList())
+                }
+            } catch (mockException: Exception) {
+                Log.e("OrderRepository", "getUserOrdersFlow: Mock тоже не работает: ${mockException.message}")
+                emit(emptyList())
+            }
         }
     }
 
     override suspend fun getUserOrders(userId: Long): Result<List<Order>> = withContext(Dispatchers.IO) {
         return@withContext try {
+            Log.d("OrderRepository", "Запрос заказов пользователя через API...")
+            
             val apiResult = safeApiCall { orderApiService.getUserOrders() }
             
-            if (apiResult.isSuccess) {
-                val ordersResponse = apiResult.getOrNull()
-                if (ordersResponse != null) {
-                    val orders = ordersResponse.orders.toDomainOrders()
-                    Log.d("OrderRepository", "Заказы пользователя загружены с API: ${orders.size}")
-                    Result.success(orders)
-                } else {
-                    Log.w("OrderRepository", "Пустой ответ API заказов пользователя, используем mock")
+            Log.d("OrderRepository", "API результат: success=${apiResult.isSuccess}")
+            
+            when (apiResult) {
+                is ApiResult.Success -> {
+                    val ordersResponse = apiResult.data
+                    Log.d("OrderRepository", "API ответ получен: $ordersResponse")
+                    
+                    if (ordersResponse != null) {
+                        Log.d("OrderRepository", "Обработка заказов: ${ordersResponse.orders.size} записей")
+                        ordersResponse.orders.forEachIndexed { index, orderDto ->
+                            Log.d("OrderRepository", "DTO Заказ $index: ID=${orderDto.id}, статус='${orderDto.status}', сумма=${orderDto.totalAmount}")
+                            Log.d("OrderRepository", "  Адрес: '${orderDto.deliveryAddress}'")
+                            Log.d("OrderRepository", "  Телефон: '${orderDto.contactPhone}'")
+                            Log.d("OrderRepository", "  Комментарий: '${orderDto.comment}'")
+                            Log.d("OrderRepository", "  Товаров: ${orderDto.items?.size ?: 0}")
+                        }
+                        
+                        val orders = ordersResponse.orders.toDomainOrders()
+                        Log.d("OrderRepository", "Заказы пользователя загружены с API: ${orders.size}")
+                        orders.forEach { order ->
+                            Log.d("OrderRepository", "Domain Заказ: ID=${order.id}, статус=${order.status}, сумма=${order.totalAmount}₽")
+                            Log.d("OrderRepository", "  Адрес: '${order.deliveryAddress}'")
+                            Log.d("OrderRepository", "  Телефон: '${order.customerPhone}'")
+                            Log.d("OrderRepository", "  Комментарий: '${order.notes}'")
+                            Log.d("OrderRepository", "  Дата: ${order.createdAt}")
+                            Log.d("OrderRepository", "  Товаров: ${order.items.size}")
+                        }
+                        Result.success(orders)
+                    } else {
+                        Log.w("OrderRepository", "Пустой ответ API заказов пользователя, используем mock")
+                        mockOrderRepository.getUserOrders(userId)
+                    }
+                }
+                is ApiResult.Error -> {
+                    Log.w("OrderRepository", "Ошибка API заказов пользователя: ${apiResult.message} (код: ${apiResult.code}), используем mock")
+                    
+                    // Если ошибка 401, то проблема с токеном
+                    if (apiResult.code == 401) {
+                        Log.e("OrderRepository", "Проблема с авторизацией - возможно истек JWT токен")
+                    }
+                    
                     mockOrderRepository.getUserOrders(userId)
                 }
-            } else {
-                Log.w("OrderRepository", "Ошибка API заказов пользователя: ${apiResult.getErrorMessage()}, используем mock")
-                mockOrderRepository.getUserOrders(userId)
+                is ApiResult.NetworkError -> {
+                    Log.w("OrderRepository", "Сетевая ошибка при загрузке заказов: ${apiResult.message}, используем mock")
+                    mockOrderRepository.getUserOrders(userId)
+                }
             }
         } catch (e: Exception) {
-            Log.e("OrderRepository", "Исключение при получении заказов пользователя: ${e.message}")
+            Log.e("OrderRepository", "Исключение при получении заказов пользователя: ${e.message}", e)
             mockOrderRepository.getUserOrders(userId)
         }
     }

@@ -10,6 +10,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pizzanat.app.domain.entities.CartItem
 import com.pizzanat.app.domain.usecases.cart.GetCartItemsUseCase
+import com.pizzanat.app.presentation.components.isValidPhoneNumber
+import com.pizzanat.app.presentation.components.normalizePhoneForApi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,14 +24,14 @@ data class CheckoutUiState(
     val totalPrice: Double = 0.0,
     val totalItems: Int = 0,
     val deliveryAddress: String = "",
-    val customerPhone: String = "",
+    val customerPhone: String = "+7",
     val customerName: String = "",
     val notes: String = "",
-    val isLoading: Boolean = false,
-    val error: String? = null,
     val addressError: String? = null,
     val phoneError: String? = null,
-    val nameError: String? = null
+    val nameError: String? = null,
+    val isLoading: Boolean = false,
+    val error: String? = null
 )
 
 /**
@@ -108,6 +110,13 @@ class CheckoutViewModel @Inject constructor(
      * @return true если все поля валидны
      */
     fun validateFields(): Boolean {
+        return validateFieldsInternal()
+    }
+    
+    /**
+     * Внутренняя валидация полей формы
+     */
+    private fun validateFieldsInternal(): Boolean {
         var isValid = true
         val currentState = _uiState.value
         
@@ -118,8 +127,8 @@ class CheckoutViewModel @Inject constructor(
         }
         
         val phoneError = when {
-            currentState.customerPhone.isBlank() -> "Номер телефона обязателен"
-            currentState.customerPhone.length < 10 -> "Некорректный номер телефона"
+            currentState.customerPhone.isBlank() || currentState.customerPhone == "+7" -> "Введите номер телефона"
+            !isValidPhoneNumber(currentState.customerPhone) -> "Введите корректный номер телефона"
             else -> null
         }
         
@@ -151,7 +160,7 @@ class CheckoutViewModel @Inject constructor(
             cartItems = currentState.cartItems,
             totalPrice = currentState.totalPrice,
             deliveryAddress = currentState.deliveryAddress,
-            customerPhone = currentState.customerPhone,
+            customerPhone = normalizePhoneForApi(currentState.customerPhone),
             customerName = currentState.customerName,
             notes = currentState.notes
         )

@@ -9,6 +9,8 @@ package com.pizzanat.app.presentation.auth.register
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pizzanat.app.domain.usecases.auth.RegisterUseCase
+import com.pizzanat.app.presentation.components.isValidPhoneNumber
+import com.pizzanat.app.presentation.components.normalizePhoneForApi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,7 +23,7 @@ data class RegisterUiState(
     val email: String = "",
     val firstName: String = "",
     val lastName: String = "",
-    val phone: String = "",
+    val phone: String = "+7",
     val password: String = "",
     val confirmPassword: String = "",
     val usernameError: String? = null,
@@ -40,10 +42,10 @@ data class RegisterUiState(
 class RegisterViewModel @Inject constructor(
     private val registerUseCase: RegisterUseCase
 ) : ViewModel() {
-    
+
     private val _uiState = MutableStateFlow(RegisterUiState())
     val uiState: StateFlow<RegisterUiState> = _uiState.asStateFlow()
-    
+
     fun onUsernameChanged(username: String) {
         _uiState.value = _uiState.value.copy(
             username = username,
@@ -51,7 +53,7 @@ class RegisterViewModel @Inject constructor(
             generalError = null
         )
     }
-    
+
     fun onEmailChanged(email: String) {
         _uiState.value = _uiState.value.copy(
             email = email,
@@ -59,7 +61,7 @@ class RegisterViewModel @Inject constructor(
             generalError = null
         )
     }
-    
+
     fun onFirstNameChanged(firstName: String) {
         _uiState.value = _uiState.value.copy(
             firstName = firstName,
@@ -67,7 +69,7 @@ class RegisterViewModel @Inject constructor(
             generalError = null
         )
     }
-    
+
     fun onLastNameChanged(lastName: String) {
         _uiState.value = _uiState.value.copy(
             lastName = lastName,
@@ -75,7 +77,7 @@ class RegisterViewModel @Inject constructor(
             generalError = null
         )
     }
-    
+
     fun onPhoneChanged(phone: String) {
         _uiState.value = _uiState.value.copy(
             phone = phone,
@@ -83,7 +85,7 @@ class RegisterViewModel @Inject constructor(
             generalError = null
         )
     }
-    
+
     fun onPasswordChanged(password: String) {
         _uiState.value = _uiState.value.copy(
             password = password,
@@ -92,7 +94,7 @@ class RegisterViewModel @Inject constructor(
             generalError = null
         )
     }
-    
+
     fun onConfirmPasswordChanged(confirmPassword: String) {
         _uiState.value = _uiState.value.copy(
             confirmPassword = confirmPassword,
@@ -100,10 +102,10 @@ class RegisterViewModel @Inject constructor(
             generalError = null
         )
     }
-    
+
     fun onRegisterClicked() {
         val currentState = _uiState.value
-        
+
         // Валидация всех полей
         val usernameError = validateUsername(currentState.username)
         val emailError = validateEmail(currentState.email)
@@ -112,9 +114,9 @@ class RegisterViewModel @Inject constructor(
         val phoneError = validatePhone(currentState.phone)
         val passwordError = validatePassword(currentState.password)
         val confirmPasswordError = validateConfirmPassword(currentState.password, currentState.confirmPassword)
-        
+
         // Если есть ошибки валидации
-        if (usernameError != null || emailError != null || firstNameError != null || 
+        if (usernameError != null || emailError != null || firstNameError != null ||
             lastNameError != null || phoneError != null || passwordError != null || confirmPasswordError != null) {
             _uiState.value = currentState.copy(
                 usernameError = usernameError,
@@ -127,7 +129,7 @@ class RegisterViewModel @Inject constructor(
             )
             return
         }
-        
+
         // Выполнение регистрации
         performRegister(
             username = currentState.username,
@@ -138,7 +140,7 @@ class RegisterViewModel @Inject constructor(
             password = currentState.password
         )
     }
-    
+
     private fun validateUsername(username: String): String? {
         return when {
             username.isBlank() -> "Имя пользователя не может быть пустым"
@@ -148,7 +150,7 @@ class RegisterViewModel @Inject constructor(
             else -> null
         }
     }
-    
+
     private fun validateEmail(email: String): String? {
         return when {
             email.isBlank() -> "Email не может быть пустым"
@@ -156,7 +158,7 @@ class RegisterViewModel @Inject constructor(
             else -> null
         }
     }
-    
+
     private fun validateFirstName(firstName: String): String? {
         return when {
             firstName.isBlank() -> "Имя не может быть пустым"
@@ -165,7 +167,7 @@ class RegisterViewModel @Inject constructor(
             else -> null
         }
     }
-    
+
     private fun validateLastName(lastName: String): String? {
         return when {
             lastName.isBlank() -> "Фамилия не может быть пустой"
@@ -174,16 +176,15 @@ class RegisterViewModel @Inject constructor(
             else -> null
         }
     }
-    
+
     private fun validatePhone(phone: String): String? {
         return when {
-            phone.isBlank() -> "Телефон не может быть пустым"
-            phone.length < 10 -> "Телефон должен содержать минимум 10 цифр"
-            !phone.matches(Regex("^[+]?[0-9\\s\\-()]+$")) -> "Неверный формат телефона"
+            phone.isBlank() || phone == "+7" -> "Введите номер телефона"
+            !isValidPhoneNumber(phone) -> "Введите корректный номер телефона"
             else -> null
         }
     }
-    
+
     private fun validatePassword(password: String): String? {
         return when {
             password.isBlank() -> "Пароль не может быть пустым"
@@ -192,7 +193,7 @@ class RegisterViewModel @Inject constructor(
             else -> null
         }
     }
-    
+
     private fun validateConfirmPassword(password: String, confirmPassword: String): String? {
         return when {
             confirmPassword.isBlank() -> "Подтверждение пароля не может быть пустым"
@@ -200,7 +201,7 @@ class RegisterViewModel @Inject constructor(
             else -> null
         }
     }
-    
+
     private fun performRegister(
         username: String,
         email: String,
@@ -210,39 +211,31 @@ class RegisterViewModel @Inject constructor(
         password: String
     ) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(
-                isLoading = true,
-                generalError = null
+            _uiState.value = _uiState.value.copy(isLoading = true, generalError = null)
+
+            // Нормализуем номер телефона для API
+            val normalizedPhone = normalizePhoneForApi(phone)
+
+            val result = registerUseCase(
+                username = username,
+                email = email,
+                password = password,
+                firstName = firstName,
+                lastName = lastName,
+                phone = normalizedPhone
             )
-            
-            try {
-                val result = registerUseCase(
-                    username = username,
-                    email = email,
-                    password = password,
-                    firstName = firstName,
-                    lastName = lastName,
-                    phone = phone
-                )
-                
-                if (result.isSuccess) {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        isRegisterSuccessful = true
-                    )
-                } else {
-                    val error = result.exceptionOrNull()?.message ?: "Неизвестная ошибка"
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        generalError = error
-                    )
-                }
-            } catch (e: Exception) {
+
+            if (result.isSuccess) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    generalError = e.message ?: "Произошла ошибка"
+                    isRegisterSuccessful = true
+                )
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    generalError = result.exceptionOrNull()?.message ?: "Ошибка регистрации"
                 )
             }
         }
     }
-} 
+}

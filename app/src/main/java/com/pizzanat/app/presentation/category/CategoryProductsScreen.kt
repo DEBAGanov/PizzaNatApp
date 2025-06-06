@@ -3,7 +3,7 @@
  * @description: Экран списка продуктов в стиле Fox Whiskers
  * @dependencies: Compose, Hilt, FoxProductCard
  * @created: 2024-12-19
- * @updated: 2024-12-20 - Переход на стиль Fox Whiskers
+ * @updated: 2024-12-20 - Переход на стиль Fox Whiskers + FloatingCartButton
  */
 package com.pizzanat.app.presentation.category
 
@@ -50,6 +50,7 @@ import com.pizzanat.app.presentation.components.LazyProductGrid
 import com.pizzanat.app.presentation.components.OptimizedAsyncImage
 import com.pizzanat.app.presentation.components.FoxCircularProductImageMedium
 import com.pizzanat.app.presentation.components.FoxProductCard
+import com.pizzanat.app.presentation.components.FloatingCartButton
 import java.text.NumberFormat
 import java.util.*
 import androidx.compose.ui.graphics.Color
@@ -61,6 +62,7 @@ fun CategoryProductsScreen(
     onNavigateBack: () -> Unit = {},
     onNavigateToProduct: (Product) -> Unit = {},
     onAddToCart: (Product) -> Unit = {},
+    onNavigateToCart: () -> Unit = {},
     viewModel: CategoryProductsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -72,98 +74,120 @@ fun CategoryProductsScreen(
         }
     }
     
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background) // Серый фон Fox Whiskers
-            .statusBarsPadding()
+    Box(
+        modifier = Modifier.fillMaxSize()
     ) {
-        // Top Bar с желтой плашкой как в Fox Whiskers
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = CategoryPlateYellow
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background) // Серый фон Fox Whiskers
+                .statusBarsPadding()
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            // Top Bar с желтой плашкой как в Fox Whiskers
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = CategoryPlateYellow
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Назад",
-                            tint = Color.Black
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Назад",
+                                tint = Color.Black
+                            )
+                        }
+                        
+                        Text(
+                            text = categoryName.ifBlank { "Продукты" },
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
                         )
                     }
-                    
-                    Text(
-                        text = categoryName.ifBlank { "Продукты" },
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Black
+                }
+            }
+            
+            // Content
+            when {
+                uiState.isLoading && uiState.products.isEmpty() -> {
+                    LoadingContent()
+                }
+                uiState.error != null && uiState.products.isEmpty() -> {
+                    ErrorContent(
+                        error = uiState.error ?: "Неизвестная ошибка",
+                        onRetry = { viewModel.loadProducts() },
+                        onDismissError = { viewModel.clearError() }
                     )
                 }
-            }
-        }
-        
-        // Content
-        when {
-            uiState.isLoading && uiState.products.isEmpty() -> {
-                LoadingContent()
-            }
-            uiState.error != null && uiState.products.isEmpty() -> {
-                ErrorContent(
-                    error = uiState.error ?: "Неизвестная ошибка",
-                    onRetry = { viewModel.loadProducts() },
-                    onDismissError = { viewModel.clearError() }
-                )
-            }
-            uiState.products.isEmpty() -> {
-                EmptyContent(
-                    categoryName = categoryName,
-                    onRetry = { viewModel.loadProducts() }
-                )
-            }
-            else -> {
-                // Сетка товаров в стиле Fox Whiskers
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
-                    contentPadding = PaddingValues(vertical = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(uiState.products) { product ->
-                        FoxProductCard(
-                            product = product,
-                            onProductClick = onNavigateToProduct,
-                            onAddToCart = onAddToCart
-                        )
+                uiState.products.isEmpty() -> {
+                    EmptyContent(
+                        categoryName = categoryName,
+                        onRetry = { viewModel.loadProducts() }
+                    )
+                }
+                else -> {
+                    // Сетка товаров в стиле Fox Whiskers
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
+                        contentPadding = PaddingValues(
+                            top = 16.dp,
+                            bottom = 80.dp // Дополнительное место для floating кнопки
+                        ),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(uiState.products) { product ->
+                            FoxProductCard(
+                                product = product,
+                                onProductClick = onNavigateToProduct,
+                                onAddToCart = { viewModel.addToCart(it) }
+                            )
+                        }
                     }
                 }
             }
-        }
-        
-        // Показываем ошибку как Snackbar если есть продукты
-        if (uiState.error != null && uiState.products.isNotEmpty()) {
-            LaunchedEffect(uiState.error) {
-                // Автоматически скрываем ошибку через 3 секунды
-                kotlinx.coroutines.delay(3000)
-                viewModel.clearError()
+            
+            // Показываем ошибку как Snackbar если есть продукты
+            if (uiState.error != null && uiState.products.isNotEmpty()) {
+                LaunchedEffect(uiState.error) {
+                    // Автоматически скрываем ошибку через 3 секунды
+                    kotlinx.coroutines.delay(3000)
+                    viewModel.clearError()
+                }
+            }
+            
+            // Показываем сообщение об успешном добавлении в корзину
+            if (uiState.addToCartSuccess != null) {
+                LaunchedEffect(uiState.addToCartSuccess) {
+                    // Сообщение автоматически скрывается в ViewModel
+                }
             }
         }
+
+        // Floating кнопка корзины
+        FloatingCartButton(
+            onNavigateToCart = onNavigateToCart,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 16.dp)
+        )
     }
 }
 

@@ -38,6 +38,7 @@ import com.pizzanat.app.presentation.theme.PizzaNatTheme
 import com.pizzanat.app.presentation.theme.CategoryPlateYellow
 import java.text.NumberFormat
 import java.util.*
+import com.pizzanat.app.presentation.components.PhoneTextField
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -457,30 +458,17 @@ private fun DeliveryInfoCard(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Customer Phone
-            OutlinedTextField(
+            PhoneTextField(
                 value = uiState.customerPhone,
                 onValueChange = onUpdatePhone,
-                label = { Text("Номер телефона") },
-                leadingIcon = {
-                    Icon(Icons.Default.Phone, contentDescription = null)
-                },
-                modifier = Modifier.fillMaxWidth(),
+                label = "Номер телефона",
                 isError = uiState.phoneError != null,
-                supportingText = {
-                    if (uiState.phoneError != null) {
-                        Text(
-                            text = uiState.phoneError!!,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
-                },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Phone,
-                    imeAction = ImeAction.Next
-                ),
+                errorMessage = uiState.phoneError,
+                modifier = Modifier.fillMaxWidth(),
                 keyboardActions = KeyboardActions(
                     onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                )
+                ),
+                imeAction = ImeAction.Next
             )
 
             Spacer(modifier = Modifier.height(16.dp))

@@ -70,7 +70,7 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var searchQuery by remember { mutableStateOf("") }
-    
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -99,12 +99,12 @@ fun HomeScreen(
                     fontWeight = FontWeight.Bold,
                     color = Color.Black
                 )
-                
+
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = viewModel::refresh) {
+            /*        IconButton(onClick = viewModel::refresh) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
                             contentDescription = "Обновить",
@@ -125,7 +125,7 @@ fun HomeScreen(
                             contentDescription = "Корзина",
                             tint = Color.Black
                         )
-                    }
+                    }*/
                     IconButton(onClick = onNavigateToProfile) {
                         Icon(
                             imageVector = Icons.Default.AccountCircle,
@@ -143,12 +143,12 @@ fun HomeScreen(
                 }
             }
         }
-        
+
         // Серая строка поиска как в Fox Whiskers
         FoxSearchBar(
             query = searchQuery,
             onQueryChange = { searchQuery = it },
-            onSearch = { 
+            onSearch = {
                 if (it.isNotEmpty()) {
                     onNavigateToSearch()
                 }
@@ -156,7 +156,7 @@ fun HomeScreen(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             placeholder = "Искать"
         )
-        
+
         // Content
         when {
             uiState.isLoading && uiState.categories.isEmpty() -> {
@@ -220,7 +220,7 @@ private fun ErrorContent(
         kotlinx.coroutines.delay(5000)
         onDismissError()
     }
-    
+
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -245,27 +245,27 @@ private fun ErrorContent(
                     text = "😕",
                     style = MaterialTheme.typography.displayMedium
                 )
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 Text(
                     text = "Упс! Что-то пошло не так",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center
                 )
-                
+
                 Spacer(modifier = Modifier.height(8.dp))
-                
+
                 Text(
                     text = error,
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
-                
+
                 Spacer(modifier = Modifier.height(24.dp))
-                
+
                 Button(
                     onClick = onRetry,
                     colors = ButtonDefaults.buttonColors(
@@ -297,14 +297,14 @@ private fun CategoriesContent(
                 onDismissError()
             }
         }
-        
+
         if (isRefreshing) {
             LinearProgressIndicator(
                 modifier = Modifier.fillMaxWidth(),
                 color = MaterialTheme.colorScheme.primary
             )
         }
-        
+
         // Сетка категорий в стиле Fox Whiskers
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
@@ -357,9 +357,9 @@ private fun FoxCategoryCard(
                 contentDescription = category.name,
                 size = 80.dp
             )
-            
+
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             // Название категории
             Text(
                 text = category.name,
@@ -381,4 +381,4 @@ fun HomeScreenPreview() {
     PizzaNatTheme {
         HomeScreen()
     }
-} 
+}

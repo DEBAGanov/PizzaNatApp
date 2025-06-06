@@ -47,6 +47,9 @@ import com.pizzanat.app.presentation.admin.orders.AdminOrdersScreen
 import com.pizzanat.app.presentation.admin.products.AdminProductsScreen
 import androidx.navigation.navArgument
 import androidx.navigation.NavType
+import com.pizzanat.app.presentation.auth.phone.PhoneAuthScreen
+import com.pizzanat.app.presentation.auth.phone.SmsCodeScreen
+import com.pizzanat.app.presentation.auth.telegram.TelegramAuthScreen
 
 /**
  * Маршруты навигации приложения
@@ -54,6 +57,9 @@ import androidx.navigation.NavType
 object PizzaNatRoutes {
     const val LOGIN = "login"
     const val REGISTER = "register"
+    const val PHONE_AUTH = "phone_auth"
+    const val SMS_CODE = "sms_code/{phoneNumber}"
+    const val TELEGRAM_AUTH = "telegram_auth"
     const val HOME = "home"
     const val SPLASH = "splash"
     const val CATEGORY_PRODUCTS = "category_products/{categoryId}/{categoryName}"
@@ -74,6 +80,7 @@ object PizzaNatRoutes {
     fun categoryProducts(categoryId: Long, categoryName: String = "") = 
         "category_products/$categoryId/$categoryName"
     fun productDetail(productId: Long) = "product_detail/$productId"
+    fun smsCode(phoneNumber: String) = "sms_code/$phoneNumber"
     fun payment(orderTotal: Double) = "payment/$orderTotal"
 }
 
@@ -111,6 +118,12 @@ fun PizzaNatNavigation(
                         popUpTo(PizzaNatRoutes.LOGIN) { inclusive = false }
                     }
                 },
+                onNavigateToPhoneAuth = {
+                    navController.navigate(PizzaNatRoutes.PHONE_AUTH)
+                },
+                onNavigateToTelegramAuth = {
+                    navController.navigate(PizzaNatRoutes.TELEGRAM_AUTH)
+                },
                 onLoginSuccess = {
                     navController.navigate(PizzaNatRoutes.HOME) {
                         // Очищаем весь стек аутентификации при успешном входе
@@ -132,6 +145,52 @@ fun PizzaNatNavigation(
                 onRegisterSuccess = {
                     navController.navigate(PizzaNatRoutes.HOME) {
                         // Очищаем весь стек аутентификации при успешной регистрации
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            )
+        }
+        
+        // Экран аутентификации через номер телефона
+        composable(PizzaNatRoutes.PHONE_AUTH) {
+            PhoneAuthScreen(
+                onNavigateBack = { navController.navigateUp() },
+                onNavigateToSmsCode = { phoneNumber ->
+                    navController.navigate(PizzaNatRoutes.smsCode(phoneNumber))
+                },
+                onAuthSuccess = {
+                    navController.navigate(PizzaNatRoutes.HOME) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            )
+        }
+        
+        // Экран ввода SMS кода
+        composable(
+            route = "sms_code/{phoneNumber}",
+            arguments = listOf(
+                navArgument("phoneNumber") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val phoneNumber = backStackEntry.arguments?.getString("phoneNumber") ?: ""
+            SmsCodeScreen(
+                phoneNumber = phoneNumber,
+                onNavigateBack = { navController.navigateUp() },
+                onAuthSuccess = {
+                    navController.navigate(PizzaNatRoutes.HOME) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            )
+        }
+        
+        // Экран аутентификации через Telegram
+        composable(PizzaNatRoutes.TELEGRAM_AUTH) {
+            TelegramAuthScreen(
+                onNavigateBack = { navController.navigateUp() },
+                onAuthSuccess = {
+                    navController.navigate(PizzaNatRoutes.HOME) {
                         popUpTo(0) { inclusive = true }
                     }
                 }
@@ -179,7 +238,10 @@ fun PizzaNatNavigation(
                     navController.navigate(PizzaNatRoutes.productDetail(product.id))
                 },
                 onAddToCart = { product ->
-                    // Handle add to cart (can show snackbar here)
+                    // Реализовано в CategoryProductsViewModel
+                },
+                onNavigateToCart = {
+                    navController.navigate(PizzaNatRoutes.CART)
                 }
             )
         }
@@ -211,6 +273,9 @@ fun PizzaNatNavigation(
                 onAddToCart = { product ->
                     // TODO: Implement add to cart functionality
                     // Будет реализовано в Этапе 4
+                },
+                onNavigateToCart = {
+                    navController.navigate(PizzaNatRoutes.CART)
                 }
             )
         }

@@ -151,30 +151,62 @@ class AdminRepositoryImpl @Inject constructor(
 
     override suspend fun getAllOrders(page: Int, size: Int): Result<List<Order>> = withContext(Dispatchers.IO) {
         return@withContext try {
-            Log.d("AdminRepository", "Запрос всех заказов через API (page=$page, size=$size)")
+            Log.d("AdminRepository", "Запрос ВСЕХ заказов через API (загружаем все страницы)")
             
-            // Получаем заказы через OrderApiService (админский эндпоинт)
-            val apiResult = safeApiCall { orderApiService.getAllOrders(page = page, size = size) }
+            val allOrders = mutableListOf<Order>()
+            var currentPage = 0
+            var hasMorePages = true
             
-            if (apiResult.isSuccess) {
-                val adminOrdersPageResponse = apiResult.getOrNull()
-                if (adminOrdersPageResponse != null) {
-                    // Используем новый маппер для AdminOrdersPageResponse
-                    val orders = adminOrdersPageResponse.toDomainOrders()
-                    Log.d("AdminRepository", "✅ Заказы загружены с API: ${orders.size} заказов")
-                    orders.forEach { order ->
-                        Log.d("AdminRepository", "API Заказ: ID=${order.id}, клиент=${order.customerName}, сумма=${order.totalAmount}")
-                    }
-                    Result.success(orders)
-                } else {
-                    Log.w("AdminRepository", "❌ Пустой ответ API заказов, используем mock данные")
-                    mockAdminRepository.getAllOrders(page, size)
+            // Загружаем все страницы пока есть данные
+            while (hasMorePages) {
+                Log.d("AdminRepository", "Загружаем страницу $currentPage (size=100)")
+                val apiResult = safeApiCall { 
+                    orderApiService.getAllOrders(page = currentPage, size = 100) // Увеличиваем size до 100
                 }
-            } else {
-                Log.w("AdminRepository", "❌ Ошибка API заказов: ${apiResult.getErrorMessage()}, используем mock данные")
-                Log.w("AdminRepository", "HTTP статус ошибки: возможно требуется админский токен")
-                mockAdminRepository.getAllOrders(page, size)
+                
+                if (apiResult.isSuccess) {
+                    val adminOrdersPageResponse = apiResult.getOrNull()
+                    if (adminOrdersPageResponse != null) {
+                        val orders = adminOrdersPageResponse.toDomainOrders()
+                        allOrders.addAll(orders)
+                        
+                        Log.d("AdminRepository", "✅ Страница $currentPage: ${orders.size} заказов (всего: ${allOrders.size})")
+                        
+                        // Проверяем есть ли еще страницы (Spring Boot Page structure)
+                        // В логах видно "last":false, "totalPages":2 - проверяем по этим полям
+                        hasMorePages = !adminOrdersPageResponse.last && currentPage < (adminOrdersPageResponse.totalPages - 1)
+                        currentPage++
+                        
+                        // Защита от бесконечного цикла
+                        if (currentPage > 10) {
+                            Log.w("AdminRepository", "⚠️ Остановка загрузки: достигнуто максимум страниц (10)")
+                            break
+                        }
+                    } else {
+                        Log.w("AdminRepository", "❌ Пустой ответ на странице $currentPage")
+                        hasMorePages = false
+                    }
+                } else {
+                    Log.w("AdminRepository", "❌ Ошибка API на странице $currentPage: ${apiResult.getErrorMessage()}")
+                    hasMorePages = false
+                    
+                    // Если это первая страница и мы не смогли загрузить, используем mock
+                    if (currentPage == 0) {
+                        return@withContext mockAdminRepository.getAllOrders(page, size)
+                    }
+                }
             }
+            
+            // Сортируем все заказы по дате создания в убывающем порядке (новые сверху)
+            val sortedOrders = allOrders.sortedByDescending { it.createdAt }
+            
+            Log.d("AdminRepository", "✅ Загружено ВСЕГО заказов: ${sortedOrders.size} (отсортированы по дате)")
+            sortedOrders.forEach { order ->
+                Log.d("AdminRepository", "Заказ: ID=${order.id}, дата=${order.createdAt}, клиент=${order.customerName}, сумма=${order.totalAmount}")
+            }
+            
+            Result.success(sortedOrders)
+            
         } catch (e: Exception) {
             Log.e("AdminRepository", "❌ Исключение при получении заказов: ${e.message}")
             mockAdminRepository.getAllOrders(page, size)

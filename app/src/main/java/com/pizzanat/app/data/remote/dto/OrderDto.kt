@@ -96,14 +96,20 @@ data class UpdateOrderStatusRequest(
 )
 
 data class OrdersResponse(
-    @SerializedName("orders")
+    @SerializedName("content")
     val orders: List<OrderDto>,
     @SerializedName("totalPages")
     val totalPages: Int,
-    @SerializedName("currentPage")
+    @SerializedName("number")
     val currentPage: Int,
     @SerializedName("totalElements")
-    val totalElements: Int
+    val totalElements: Int,
+    @SerializedName("last")
+    val last: Boolean = false,
+    @SerializedName("first")
+    val first: Boolean = false,
+    @SerializedName("empty")
+    val empty: Boolean = false
 )
 
 /**
