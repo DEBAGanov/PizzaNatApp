@@ -69,4 +69,71 @@ data class RegisterRequestDto(
     val lastName: String,
     @SerializedName("phone")
     val phone: String
+)
+
+// Telegram Auth DTOs
+data class TelegramAuthRequestDto(
+    @SerializedName("deviceId")
+    val deviceId: String?
+)
+
+data class TelegramAuthResponseDto(
+    @SerializedName("success")
+    val success: Boolean,
+    @SerializedName("authToken")
+    val authToken: String,
+    @SerializedName("telegramBotUrl")
+    val telegramBotUrl: String,
+    @SerializedName("expiresAt")
+    val expiresAt: String
+)
+
+data class TelegramAuthStatusDto(
+    @SerializedName("success")
+    val success: Boolean,
+    @SerializedName("status")
+    val status: String, // PENDING, CONFIRMED, EXPIRED
+    @SerializedName("message")
+    val message: String?,
+    @SerializedName("token")
+    val token: String?,
+    @SerializedName("user")
+    val user: UserDto?
+)
+
+// SMS Auth DTOs
+data class SmsAuthRequestDto(
+    @SerializedName("phoneNumber")
+    val phoneNumber: String
+)
+
+data class SmsAuthResponseDto(
+    @SerializedName("success")
+    val success: Boolean,
+    @SerializedName("message")
+    val message: String,
+    @SerializedName("expiresAt")
+    val expiresAt: String,
+    @SerializedName("codeLength")
+    val codeLength: Int
+)
+
+data class SmsCodeVerifyRequestDto(
+    @SerializedName("phoneNumber")
+    val phoneNumber: String,
+    @SerializedName("code")
+    val code: String
+)
+
+data class SmsCodeVerifyResponseDto(
+    @SerializedName("success")
+    val success: Boolean,
+    @SerializedName("token")
+    val token: String?,
+    @SerializedName("user")
+    val user: UserDto?,
+    @SerializedName("error")
+    val error: String?,
+    @SerializedName("message")
+    val message: String?
 ) 

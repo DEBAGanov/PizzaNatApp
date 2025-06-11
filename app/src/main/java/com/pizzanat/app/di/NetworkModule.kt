@@ -1,8 +1,9 @@
 /**
  * @file: NetworkModule.kt
  * @description: DI модуль для сетевых компонентов (Retrofit, OkHttp, API сервисы)
- * @dependencies: Hilt, Retrofit, OkHttp, Gson
+ * @dependencies: Hilt, Retrofit, OkHttp, Gson, BuildConfigUtils
  * @created: 2024-12-19
+ * @updated: 2024-12-20 - Добавлен User-Agent для отслеживания запросов
  */
 package com.pizzanat.app.di
 
@@ -20,6 +21,7 @@ import com.pizzanat.app.data.remote.api.DeliveryApiService
 import com.pizzanat.app.data.remote.api.OrderApiService
 import com.pizzanat.app.data.remote.api.ProductApiService
 import com.pizzanat.app.data.repositories.TokenManager
+import com.pizzanat.app.utils.BuildConfigUtils
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -83,6 +85,14 @@ object NetworkModule {
         return OkHttpClient.Builder()
             .addInterceptor(loggingInterceptor)
             .addInterceptor(authInterceptor)
+            .addInterceptor { chain ->
+                val request = chain.request().newBuilder()
+                    .addHeader("User-Agent", BuildConfigUtils.getUserAgent())
+                    .addHeader("Accept", "application/json")
+                    .addHeader("Content-Type", "application/json")
+                    .build()
+                chain.proceed(request)
+            }
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)

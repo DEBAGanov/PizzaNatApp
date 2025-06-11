@@ -20,9 +20,6 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-        // BuildConfig для API URL
-        buildConfigField("String", "BASE_API_URL", "\"https://debaganov-pizzanat-0177.twc1.net/api/v1/\"")
     }
 
     buildTypes {
@@ -31,6 +28,11 @@ android {
             isMinifyEnabled = false
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
+            
+            // Development/Testing Backend URL
+            buildConfigField("String", "BASE_API_URL", "\"https://debaganov-pizzanat-0177.twc1.net/api/v1/\"")
+            buildConfigField("String", "ENVIRONMENT", "\"DEBUG\"")
+            buildConfigField("boolean", "USE_MOCK_DATA", "false")
         }
         release {
             isMinifyEnabled = true
@@ -39,6 +41,25 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            
+            // Production Backend URL
+            buildConfigField("String", "BASE_API_URL", "\"https://api.pizzanat.com/api/v1/\"")
+            buildConfigField("String", "ENVIRONMENT", "\"PRODUCTION\"") 
+            buildConfigField("boolean", "USE_MOCK_DATA", "false")
+        }
+        
+        create("staging") {
+            initWith(getByName("release"))
+            isDebuggable = true
+            isMinifyEnabled = false
+            isShrinkResources = false
+            applicationIdSuffix = ".staging"
+            versionNameSuffix = "-staging"
+            
+            // Staging Backend URL (для тестирования production окружения)
+            buildConfigField("String", "BASE_API_URL", "\"https://staging.pizzanat.com/api/v1/\"")
+            buildConfigField("String", "ENVIRONMENT", "\"STAGING\"")
+            buildConfigField("boolean", "USE_MOCK_DATA", "false")
         }
     }
 

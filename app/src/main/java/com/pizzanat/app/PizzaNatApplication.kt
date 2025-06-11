@@ -1,9 +1,9 @@
 /**
  * @file: PizzaNatApplication.kt
  * @description: Основной класс приложения с инициализацией Hilt DI и оптимизированным ImageLoader
- * @dependencies: Hilt Android, Coil ImageLoader
+ * @dependencies: Hilt Android, Coil ImageLoader, BuildConfigUtils
  * @created: 2024-12-19
- * @updated: 2024-12-19 - Добавлена конфигурация ImageLoader для максимальной производительности
+ * @updated: 2024-12-20 - Добавлено логирование конфигурации среды
  */
 package com.pizzanat.app
 
@@ -14,12 +14,20 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import coil.request.CachePolicy
 import coil.util.DebugLogger
+import com.pizzanat.app.utils.BuildConfigUtils
 import dagger.hilt.android.HiltAndroidApp
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 
 @HiltAndroidApp
 class PizzaNatApplication : Application(), ImageLoaderFactory {
+    
+    override fun onCreate() {
+        super.onCreate()
+        
+        // Логирование конфигурации при запуске
+        BuildConfigUtils.logCurrentConfiguration()
+    }
     
     /**
      * Создание оптимизированного ImageLoader для максимальной производительности

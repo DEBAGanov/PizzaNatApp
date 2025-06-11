@@ -1,11 +1,15 @@
 /**
  * @file: TelegramAuthScreen.kt
- * @description: Экран авторизации через Telegram
- * @dependencies: Compose Material3, Telegram Bot API интеграция
+ * @description: Экран авторизации через Telegram с Intent интеграцией
+ * @dependencies: Compose Material3, Telegram Bot API интеграция, Android Intent
  * @created: 2024-12-20
+ * @updated: 2024-12-20 - Добавлена функциональность открытия Telegram app
  */
 package com.pizzanat.app.presentation.auth.telegram
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -20,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -38,6 +43,26 @@ fun TelegramAuthScreen(
     viewModel: TelegramAuthViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    
+    // Функция для открытия Telegram
+    val openTelegram = { url: String ->
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            context.startActivity(intent)
+            viewModel.openTelegramAuth()
+        } catch (e: Exception) {
+            // Если Telegram не установлен, открываем в браузере
+            try {
+                val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                context.startActivity(webIntent)
+                viewModel.openTelegramAuth()
+            } catch (ex: Exception) {
+                // Обработка ошибки
+                viewModel.setError("Не удалось открыть Telegram. Убедитесь, что приложение установлено.")
+            }
+        }
+    }
     
     // Обработка успешной аутентификации
     LaunchedEffect(uiState.isAuthSuccessful) {
@@ -145,7 +170,7 @@ fun TelegramAuthScreen(
                 uiState.telegramAuthUrl != null -> {
                     TelegramAuthContent(
                         authUrl = uiState.telegramAuthUrl!!,
-                        onOpenTelegram = viewModel::openTelegramAuth,
+                        onOpenTelegram = openTelegram,
                         onRefresh = viewModel::checkAuthStatus
                     )
                 }
@@ -254,7 +279,7 @@ private fun InitialContent(
 @Composable
 private fun TelegramAuthContent(
     authUrl: String,
-    onOpenTelegram: () -> Unit,
+    onOpenTelegram: (String) -> Unit,
     onRefresh: () -> Unit
 ) {
     Column(
@@ -276,7 +301,7 @@ private fun TelegramAuthContent(
         )
         
         Button(
-            onClick = onOpenTelegram,
+            onClick = { onOpenTelegram(authUrl) },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),

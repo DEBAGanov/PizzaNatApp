@@ -1,58 +1,85 @@
 /**
  * @file: RepositoryModule.kt
- * @description: DI модуль для связывания интерфейсов репозиториев с реализациями
- * @dependencies: Hilt, Repository interfaces and implementations
+ * @description: DI модуль для репозиториев с автоматическим выбором реализации
+ * @dependencies: Hilt, BuildConfig, Repository implementations
  * @created: 2024-12-19
+ * @updated: 2024-12-20 - Добавлена логика выбора реального/mock репозитория
  */
 package com.pizzanat.app.di
 
-import com.pizzanat.app.data.repositories.AuthRepositoryImpl
-import com.pizzanat.app.data.repositories.ProductRepositoryImpl
-import com.pizzanat.app.data.repositories.OrderRepositoryImpl
-import com.pizzanat.app.data.repositories.CartRepositoryImpl
-import com.pizzanat.app.data.repositories.MockNotificationRepositoryImpl
-import com.pizzanat.app.domain.repositories.AuthRepository
-import com.pizzanat.app.domain.repositories.CartRepository
-import com.pizzanat.app.domain.repositories.OrderRepository
-import com.pizzanat.app.domain.repositories.ProductRepository
-import com.pizzanat.app.domain.repositories.NotificationRepository
-import dagger.Binds
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import com.pizzanat.app.BuildConfig
+import com.pizzanat.app.data.local.dao.CartDao
+import com.pizzanat.app.data.local.dao.NotificationDao
+import com.pizzanat.app.data.network.api.AuthApiService
+import com.pizzanat.app.data.remote.api.CartApiService
+import com.pizzanat.app.data.repositories.*
+import com.pizzanat.app.domain.repositories.*
 import dagger.Module
+import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-abstract class RepositoryModule {
+object RepositoryModule {
     
-    @Binds
+    /**
+     * Умный выбор AuthRepository в зависимости от окружения
+     * - Production/Staging: Реальный API
+     * - Debug + USE_MOCK_DATA=true: Mock данные
+     * - Debug + USE_MOCK_DATA=false: Реальный API для тестирования
+     */
+    @Provides
     @Singleton
-    abstract fun bindAuthRepository(
-        authRepositoryImpl: AuthRepositoryImpl
-    ): AuthRepository
+    fun provideAuthRepository(
+        authApiService: AuthApiService,
+        tokenManager: TokenManager,
+        userManager: UserManager
+    ): AuthRepository {
+        
+        return if (BuildConfig.USE_MOCK_DATA && BuildConfig.DEBUG) {
+            // Debug режим с mock данными для разработки UI
+            MockAuthRepositoryImpl(tokenManager, userManager)
+        } else {
+            // Production/Staging или Debug с реальным API для тестирования интеграции
+            AuthRepositoryImpl(authApiService, tokenManager, userManager)
+        }
+    }
     
-    @Binds
+    @Provides
     @Singleton
-    abstract fun bindProductRepository(
-        productRepositoryImpl: ProductRepositoryImpl
-    ): ProductRepository
+    fun provideProductRepository(
+        productApiService: com.pizzanat.app.data.remote.api.ProductApiService
+    ): ProductRepository {
+        return ProductRepositoryImpl(productApiService)
+    }
     
-    @Binds
+    @Provides
     @Singleton
-    abstract fun bindCartRepository(
-        cartRepositoryImpl: CartRepositoryImpl
-    ): CartRepository
+    fun provideOrderRepository(
+        orderApiService: com.pizzanat.app.data.remote.api.OrderApiService
+    ): OrderRepository {
+        return MockOrderRepositoryImpl()
+    }
     
-    @Binds
+    @Provides
     @Singleton
-    abstract fun bindOrderRepository(
-        orderRepositoryImpl: OrderRepositoryImpl
-    ): OrderRepository
+    fun provideCartRepository(
+        cartDao: CartDao,
+        cartApiService: CartApiService
+    ): CartRepository {
+        return CartRepositoryImpl(cartDao, cartApiService)
+    }
     
-    @Binds
+    @Provides
     @Singleton
-    abstract fun bindNotificationRepository(
-        mockNotificationRepositoryImpl: MockNotificationRepositoryImpl
-    ): NotificationRepository
+    fun provideNotificationRepository(
+        notificationDao: NotificationDao,
+        dataStore: DataStore<Preferences>
+    ): NotificationRepository {
+        return MockNotificationRepositoryImpl(notificationDao, dataStore)
+    }
 } 
