@@ -50,6 +50,7 @@ import androidx.navigation.NavType
 import com.pizzanat.app.presentation.auth.phone.PhoneAuthScreen
 import com.pizzanat.app.presentation.auth.phone.SmsCodeScreen
 import com.pizzanat.app.presentation.auth.telegram.TelegramAuthScreen
+import com.pizzanat.app.presentation.debug.DebugNavigation
 
 /**
  * Маршруты навигации приложения
@@ -70,14 +71,17 @@ object PizzaNatRoutes {
     const val PAYMENT = "payment/{orderTotal}"
     const val PROFILE = "profile"
     const val NOTIFICATIONS = "notifications"
-    
+
     // Админ панель маршруты
     const val ADMIN_LOGIN = "admin_login"
     const val ADMIN_DASHBOARD = "admin_dashboard"
     const val ADMIN_ORDERS = "admin_orders"
     const val ADMIN_PRODUCTS = "admin_products"
-    
-    fun categoryProducts(categoryId: Long, categoryName: String = "") = 
+
+    // Debug маршрут
+    const val DEBUG = "debug"
+
+    fun categoryProducts(categoryId: Long, categoryName: String = "") =
         "category_products/$categoryId/$categoryName"
     fun productDetail(productId: Long) = "product_detail/$productId"
     fun smsCode(phoneNumber: String) = "sms_code/$phoneNumber"
@@ -108,7 +112,7 @@ fun PizzaNatNavigation(
                 }
             )
         }
-        
+
         // Экран входа
         composable(PizzaNatRoutes.LOGIN) {
             LoginScreen(
@@ -132,7 +136,7 @@ fun PizzaNatNavigation(
                 }
             )
         }
-        
+
         // Экран регистрации
         composable(PizzaNatRoutes.REGISTER) {
             RegisterScreen(
@@ -150,7 +154,7 @@ fun PizzaNatNavigation(
                 }
             )
         }
-        
+
         // Экран аутентификации через номер телефона
         composable(PizzaNatRoutes.PHONE_AUTH) {
             PhoneAuthScreen(
@@ -165,7 +169,7 @@ fun PizzaNatNavigation(
                 }
             )
         }
-        
+
         // Экран ввода SMS кода
         composable(
             route = "sms_code/{phoneNumber}",
@@ -184,7 +188,7 @@ fun PizzaNatNavigation(
                 }
             )
         }
-        
+
         // Экран аутентификации через Telegram
         composable(PizzaNatRoutes.TELEGRAM_AUTH) {
             TelegramAuthScreen(
@@ -196,7 +200,7 @@ fun PizzaNatNavigation(
                 }
             )
         }
-        
+
         // Главный экран с категориями
         composable(PizzaNatRoutes.HOME) {
             HomeScreen(
@@ -217,10 +221,13 @@ fun PizzaNatNavigation(
                 },
                 onNavigateToAdmin = {
                     navController.navigate(PizzaNatRoutes.ADMIN_LOGIN)
+                },
+                onNavigateToDebug = {
+                    navController.navigate(PizzaNatRoutes.DEBUG)
                 }
             )
         }
-        
+
         // Экран продуктов категории
         composable(
             route = "category_products/{categoryId}/{categoryName}",
@@ -245,7 +252,7 @@ fun PizzaNatNavigation(
                 }
             )
         }
-        
+
         // Экран детальной информации о продукте
         composable(
             route = "product_detail/{productId}",
@@ -262,7 +269,7 @@ fun PizzaNatNavigation(
                 }
             )
         }
-        
+
         // Экран поиска
         composable(PizzaNatRoutes.SEARCH) {
             SearchScreen(
@@ -279,7 +286,7 @@ fun PizzaNatNavigation(
                 }
             )
         }
-        
+
         // Экран корзины
         composable(PizzaNatRoutes.CART) {
             CartScreen(
@@ -293,7 +300,7 @@ fun PizzaNatNavigation(
                 }
             )
         }
-        
+
         // Экран оформления заказа
         composable(PizzaNatRoutes.CHECKOUT) {
             CheckoutScreen(
@@ -303,18 +310,18 @@ fun PizzaNatNavigation(
                 }
             )
         }
-        
+
         // Экран оплаты
         composable(PizzaNatRoutes.PAYMENT) { backStackEntry ->
             val orderTotal = backStackEntry.arguments?.getString("orderTotal")?.toDoubleOrNull() ?: 0.0
-            
+
             // Получаем данные заказа из CheckoutViewModel
             val parentEntry = remember(backStackEntry) {
                 navController.getBackStackEntry(PizzaNatRoutes.CHECKOUT)
             }
             val checkoutViewModel: com.pizzanat.app.presentation.checkout.CheckoutViewModel = hiltViewModel(parentEntry)
             val orderData = checkoutViewModel.savedOrderData
-            
+
             PaymentScreen(
                 orderTotal = orderTotal,
                 orderData = orderData,
@@ -326,14 +333,14 @@ fun PizzaNatNavigation(
                 }
             )
         }
-        
+
         // Экран уведомлений
         composable(PizzaNatRoutes.NOTIFICATIONS) {
             NotificationsScreen(
                 onNavigateBack = { navController.navigateUp() }
             )
         }
-        
+
         composable(PizzaNatRoutes.PROFILE) {
             ProfileScreen(
                 onNavigateBack = { navController.navigateUp() },
@@ -344,7 +351,7 @@ fun PizzaNatNavigation(
                 }
             )
         }
-        
+
         // Админ панель - Экран входа
         composable(PizzaNatRoutes.ADMIN_LOGIN) {
             AdminLoginScreen(
@@ -360,7 +367,7 @@ fun PizzaNatNavigation(
                 }
             )
         }
-        
+
         // Админ панель - Dashboard
         composable(PizzaNatRoutes.ADMIN_DASHBOARD) {
             AdminDashboardScreen(
@@ -377,17 +384,24 @@ fun PizzaNatNavigation(
                 }
             )
         }
-        
+
         // Админ панель - Заказы
         composable(PizzaNatRoutes.ADMIN_ORDERS) {
             AdminOrdersScreen(
                 onNavigateBack = { navController.navigateUp() }
             )
         }
-        
+
         composable(PizzaNatRoutes.ADMIN_PRODUCTS) {
             AdminProductsScreen(
                 onNavigateBack = { navController.navigateUp() }
+            )
+        }
+
+        // Debug панель - только в debug режиме
+        composable(PizzaNatRoutes.DEBUG) {
+            DebugNavigation(
+                modifier = Modifier.fillMaxSize()
             )
         }
     }
@@ -414,26 +428,26 @@ private fun PlaceholderScreen(
             style = MaterialTheme.typography.headlineMedium,
             textAlign = TextAlign.Center
         )
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         Text(
             text = description,
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center
         )
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         Text(
             text = "Будет реализовано в следующих версиях",
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
         )
-        
+
         Spacer(modifier = Modifier.height(32.dp))
-        
+
         Button(
             onClick = onBack,
             modifier = Modifier.fillMaxWidth()
@@ -463,26 +477,26 @@ private fun ProfileScreenPlaceholder(
             style = MaterialTheme.typography.headlineMedium,
             textAlign = TextAlign.Center
         )
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         Text(
             text = "Управление профилем и настройками",
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center
         )
-        
+
         Spacer(modifier = Modifier.height(32.dp))
-        
+
         Button(
             onClick = onBack,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("← Назад")
         }
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         Button(
             onClick = onLogout,
             modifier = Modifier.fillMaxWidth()
@@ -512,16 +526,16 @@ private fun SplashScreenPlaceholder(
             style = MaterialTheme.typography.displayMedium,
             color = MaterialTheme.colorScheme.primary
         )
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         CircularProgressIndicator()
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         Text(
             text = "Загрузка...",
             style = MaterialTheme.typography.bodyLarge
         )
     }
-} 
+}

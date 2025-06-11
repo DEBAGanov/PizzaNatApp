@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -56,6 +57,7 @@ import com.pizzanat.app.presentation.components.OptimizedAsyncImage
 import com.pizzanat.app.presentation.components.FoxCircularProductImageMedium
 import com.pizzanat.app.presentation.components.FoxSearchBar
 import com.pizzanat.app.domain.usecases.notification.GetNotificationsUseCase
+import com.pizzanat.app.BuildConfig
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,6 +68,7 @@ fun HomeScreen(
     onNavigateToProfile: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
     onNavigateToAdmin: () -> Unit = {},
+    onNavigateToDebug: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -139,6 +142,16 @@ fun HomeScreen(
                             contentDescription = "Админ панель",
                             tint = Color.Black
                         )
+                    }
+                    // Debug кнопка - только в debug режиме
+                    if (BuildConfig.DEBUG) {
+                        IconButton(onClick = onNavigateToDebug) {
+                            Icon(
+                                imageVector = Icons.Default.Build,
+                                contentDescription = "Debug панель",
+                                tint = Color.Black
+                            )
+                        }
                     }
                 }
             }
