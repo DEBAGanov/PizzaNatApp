@@ -3,9 +3,11 @@
  * @description: Оптимизированные компоненты изображений с кэшированием и fallback
  * @dependencies: Coil, Compose
  * @created: 2024-12-19
+ * @updated: 2024-12-20 - Добавлена очистка кеша и улучшенная загрузка
  */
 package com.pizzanat.app.presentation.components
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -25,9 +27,24 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.ImageLoader
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.request.CachePolicy
+
+/**
+ * Очистка кеша изображений
+ */
+fun clearImageCache(context: android.content.Context) {
+    try {
+        val imageLoader = ImageLoader(context)
+        imageLoader.memoryCache?.clear()
+        imageLoader.diskCache?.clear()
+        Log.d("OptimizedAsyncImage", "🧹 Кеш изображений очищен")
+    } catch (e: Exception) {
+        Log.e("OptimizedAsyncImage", "❌ Ошибка очистки кеша: ${e.message}")
+    }
+}
 
 /**
  * Оптимизированное изображение с кэшированием и обработкой ошибок
@@ -39,12 +56,26 @@ fun OptimizedAsyncImage(
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop
 ) {
+    val context = LocalContext.current
+    
     AsyncImage(
-        model = ImageRequest.Builder(LocalContext.current)
+        model = ImageRequest.Builder(context)
             .data(imageUrl)
             .memoryCachePolicy(CachePolicy.ENABLED)
             .diskCachePolicy(CachePolicy.ENABLED)
-            .crossfade(true)
+            .crossfade(300) // Анимация перехода
+            .allowHardware(false) // Отключаем для лучшей совместимости
+            .listener(
+                onStart = {
+                    Log.d("OptimizedAsyncImage", "🖼️ Начинаем загрузку: $imageUrl")
+                },
+                onSuccess = { _, _ ->
+                    Log.d("OptimizedAsyncImage", "✅ Изображение загружено: $imageUrl")
+                },
+                onError = { _, error ->
+                    Log.e("OptimizedAsyncImage", "❌ Ошибка загрузки $imageUrl: ${error.throwable.message}")
+                }
+            )
             .build(),
         contentDescription = contentDescription,
         modifier = modifier,
@@ -62,6 +93,8 @@ fun FoxCircularProductImageMedium(
     modifier: Modifier = Modifier,
     size: Dp = 64.dp
 ) {
+    val context = LocalContext.current
+    
     Box(
         modifier = modifier
             .size(size)
@@ -71,11 +104,23 @@ fun FoxCircularProductImageMedium(
     ) {
         if (!imageUrl.isNullOrBlank()) {
             AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
+                model = ImageRequest.Builder(context)
                     .data(imageUrl)
                     .memoryCachePolicy(CachePolicy.ENABLED)
                     .diskCachePolicy(CachePolicy.ENABLED)
-                    .crossfade(true)
+                    .crossfade(300)
+                    .allowHardware(false)
+                    .listener(
+                        onStart = {
+                            Log.d("FoxCircularProductImageMedium", "🖼️ Загружаем изображение продукта: $imageUrl")
+                        },
+                        onSuccess = { _, _ ->
+                            Log.d("FoxCircularProductImageMedium", "✅ Изображение продукта загружено: $imageUrl")
+                        },
+                        onError = { _, error ->
+                            Log.e("FoxCircularProductImageMedium", "❌ Ошибка загрузки изображения продукта $imageUrl: ${error.throwable.message}")
+                        }
+                    )
                     .build(),
                 contentDescription = contentDescription,
                 modifier = Modifier.fillMaxSize(),
@@ -83,6 +128,7 @@ fun FoxCircularProductImageMedium(
             )
         } else {
             // Fallback для продуктов без изображения
+            Log.w("FoxCircularProductImageMedium", "⚠️ Нет URL изображения для продукта: $contentDescription")
             Text(
                 text = "🍕",
                 fontSize = (size.value / 3).sp,
@@ -102,6 +148,8 @@ fun FoxCircularCategoryImage(
     modifier: Modifier = Modifier,
     size: Dp = 80.dp
 ) {
+    val context = LocalContext.current
+    
     Box(
         modifier = modifier
             .size(size)
@@ -111,24 +159,33 @@ fun FoxCircularCategoryImage(
     ) {
         if (!imageUrl.isNullOrBlank()) {
             AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
+                model = ImageRequest.Builder(context)
                     .data(imageUrl)
                     .memoryCachePolicy(CachePolicy.ENABLED)
                     .diskCachePolicy(CachePolicy.ENABLED)
-                    .crossfade(true)
+                    .crossfade(300)
                     .allowHardware(false) // Отключаем hardware acceleration для лучшей совместимости
+                    .listener(
+                        onStart = {
+                            Log.d("FoxCircularCategoryImage", "🖼️ Загружаем изображение категории: $imageUrl")
+                        },
+                        onSuccess = { _, _ ->
+                            Log.d("FoxCircularCategoryImage", "✅ Изображение категории загружено: $imageUrl")
+                        },
+                        onError = { _, error ->
+                            Log.e("FoxCircularCategoryImage", "❌ Ошибка загрузки изображения категории $imageUrl: ${error.throwable.message}")
+                        }
+                    )
                     .build(),
                 contentDescription = contentDescription,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(8.dp), // Небольшой отступ внутри круга
-                contentScale = ContentScale.Fit,
-                onError = {
-                    android.util.Log.e("FoxCircularCategoryImage", "Ошибка загрузки изображения: $imageUrl", it.result.throwable)
-                }
+                contentScale = ContentScale.Fit
             )
         } else {
             // Fallback иконки для разных категорий
+            Log.w("FoxCircularCategoryImage", "⚠️ Нет URL изображения для категории: $contentDescription")
             val fallbackEmoji = when (contentDescription?.lowercase()) {
                 "пиццы" -> "🍕"
                 "бургеры" -> "🍔"
@@ -156,6 +213,8 @@ fun FoxCircularProductImageLarge(
     modifier: Modifier = Modifier,
     size: Dp = 200.dp
 ) {
+    val context = LocalContext.current
+    
     Card(
         modifier = modifier.size(size),
         shape = CircleShape,
@@ -169,17 +228,30 @@ fun FoxCircularProductImageLarge(
         ) {
             if (!imageUrl.isNullOrBlank()) {
                 AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
+                    model = ImageRequest.Builder(context)
                         .data(imageUrl)
                         .memoryCachePolicy(CachePolicy.ENABLED)
                         .diskCachePolicy(CachePolicy.ENABLED)
-                        .crossfade(true)
+                        .crossfade(300)
+                        .allowHardware(false)
+                        .listener(
+                            onStart = {
+                                Log.d("FoxCircularProductImageLarge", "🖼️ Загружаем большое изображение продукта: $imageUrl")
+                            },
+                            onSuccess = { _, _ ->
+                                Log.d("FoxCircularProductImageLarge", "✅ Большое изображение продукта загружено: $imageUrl")
+                            },
+                            onError = { _, error ->
+                                Log.e("FoxCircularProductImageLarge", "❌ Ошибка загрузки большого изображения продукта $imageUrl: ${error.throwable.message}")
+                            }
+                        )
                         .build(),
                     contentDescription = contentDescription,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )
             } else {
+                Log.w("FoxCircularProductImageLarge", "⚠️ Нет URL изображения для большого продукта: $contentDescription")
                 Text(
                     text = "🍕",
                     fontSize = (size.value / 4).sp,

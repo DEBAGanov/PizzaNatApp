@@ -3,7 +3,7 @@
  * @description: Главный экран приложения в стиле Fox Whiskers
  * @dependencies: Compose, Hilt, FoxSearchBar, FoxCircularProductImage
  * @created: 2024-12-19
- * @updated: 2024-12-20 - Переход на стиль Fox Whiskers (серый фон, белые карточки)
+ * @updated: 2024-12-20 - Переход на стиль Fox Whiskers (серый фон, белые карточки), добавлен Pull-to-Refresh
  */
 package com.pizzanat.app.presentation.home
 
@@ -16,6 +16,10 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Notifications
@@ -56,9 +60,10 @@ import com.pizzanat.app.presentation.components.OptimizedAsyncImage
 import com.pizzanat.app.presentation.components.FoxCircularProductImageMedium
 import com.pizzanat.app.presentation.components.FoxCircularCategoryImage
 import com.pizzanat.app.presentation.components.FoxSearchBar
+import com.pizzanat.app.presentation.components.clearImageCache
 import com.pizzanat.app.domain.usecases.notification.GetNotificationsUseCase
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun HomeScreen(
     onNavigateToCategory: (Category) -> Unit = {},
@@ -71,6 +76,17 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var searchQuery by remember { mutableStateOf("") }
+    val context = LocalContext.current
+
+    // Pull-to-Refresh состояние
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = uiState.isRefreshing,
+        onRefresh = {
+            // Очищаем кеш изображений при обновлении
+            clearImageCache(context)
+            viewModel.refresh()
+        }
+    )
 
     Column(
         modifier = Modifier
@@ -105,28 +121,17 @@ fun HomeScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-            /*        IconButton(onClick = viewModel::refresh) {
+                    // Кнопка обновления с очисткой кеша
+                    IconButton(onClick = { 
+                        clearImageCache(context)
+                        viewModel.refresh()
+                    }) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
-                            contentDescription = "Обновить",
+                            contentDescription = "Обновить и очистить кеш",
                             tint = Color.Black
                         )
                     }
-                    IconButton(onClick = onNavigateToNotifications) {
-                        BadgedIcon(
-                            icon = Icons.Default.Notifications,
-                            contentDescription = "Уведомления",
-                            badgeCount = uiState.unreadNotificationsCount,
-                            iconTint = Color.Black
-                        )
-                    }
-                    IconButton(onClick = onNavigateToCart) {
-                        Icon(
-                            imageVector = Icons.Default.ShoppingCart,
-                            contentDescription = "Корзина",
-                            tint = Color.Black
-                        )
-                    }*/
                     IconButton(onClick = onNavigateToProfile) {
                         Icon(
                             imageVector = Icons.Default.AccountCircle,
@@ -158,7 +163,12 @@ fun HomeScreen(
             placeholder = "Искать"
         )
 
-        // Content
+        // Content с Pull-to-Refresh
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pullRefresh(pullRefreshState)
+        ) {
         when {
             uiState.isLoading && uiState.categories.isEmpty() -> {
                 LoadingContent()
@@ -166,7 +176,10 @@ fun HomeScreen(
             uiState.error != null && uiState.categories.isEmpty() -> {
                 ErrorContent(
                     error = uiState.error ?: "Неизвестная ошибка",
-                    onRetry = viewModel::loadCategories,
+                        onRetry = {
+                            clearImageCache(context)
+                            viewModel.loadCategories()
+                        },
                     onDismissError = viewModel::clearError
                 )
             }
@@ -182,6 +195,16 @@ fun HomeScreen(
                     onDismissError = viewModel::clearError
                 )
             }
+            }
+
+            // Pull-to-Refresh индикатор
+            PullRefreshIndicator(
+                refreshing = uiState.isRefreshing,
+                state = pullRefreshState,
+                modifier = Modifier.align(Alignment.TopCenter),
+                backgroundColor = Color.White,
+                contentColor = MaterialTheme.colorScheme.primary
+            )
         }
     }
 }

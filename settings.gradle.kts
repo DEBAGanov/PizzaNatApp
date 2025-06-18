@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "PizzaNatApp"
+rootProject.name = "PizzaNat"
 include(":app")

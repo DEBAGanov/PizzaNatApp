@@ -110,6 +110,11 @@ fun PizzaNatNavigation(
                     navController.navigate(PizzaNatRoutes.LOGIN) {
                         popUpTo(PizzaNatRoutes.SPLASH) { inclusive = true }
                     }
+                },
+                onNavigateToHome = {
+                    navController.navigate(PizzaNatRoutes.HOME) {
+                        popUpTo(PizzaNatRoutes.SPLASH) { inclusive = true }
+                    }
                 }
             )
         }

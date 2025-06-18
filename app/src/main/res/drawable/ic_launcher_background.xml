@@ -6,22 +6,9 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     
-    <!-- Красивый градиентный фон в цветах пиццы -->
-    <path android:pathData="M0,0h108v108h-108z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:startX="0"
-                android:startY="0"
-                android:endX="108"
-                android:endY="108"
-                android:type="linear">
-                <item android:color="#FFFF8C00" android:offset="0.0" /> <!-- PizzaOrange -->
-                <item android:color="#FFEB6D00" android:offset="0.3" />
-                <item android:color="#FFDC4E00" android:offset="0.6" />
-                <item android:color="#FFE53E3E" android:offset="1.0" /> <!-- PizzaRed -->
-            </gradient>
-        </aapt:attr>
-    </path>
+    <!-- Желтый фон как запросил пользователь -->
+    <path android:pathData="M0,0h108v108h-108z"
+        android:fillColor="#FECA42" />
     
     <!-- Дополнительные декоративные элементы для объема -->
     <path

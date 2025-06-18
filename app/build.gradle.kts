@@ -109,6 +109,9 @@ dependencies {
     implementation(libs.compose.ui.preview)
     implementation(libs.compose.material3)
     implementation(libs.compose.activity)
+    
+    // Material 2 для Pull-to-Refresh (совместимо с Material 3)
+    implementation("androidx.compose.material:material:1.7.6")
 
     // Lifecycle & ViewModel
     implementation(libs.lifecycle.viewmodel)

@@ -3,7 +3,7 @@
  * @description: Экран списка продуктов в стиле Fox Whiskers
  * @dependencies: Compose, Hilt, FoxProductCard
  * @created: 2024-12-19
- * @updated: 2024-12-20 - Переход на стиль Fox Whiskers + FloatingCartButton
+ * @updated: 2024-12-20 - Переход на стиль Fox Whiskers + FloatingCartButton + Pull-to-Refresh
  */
 package com.pizzanat.app.presentation.category
 
@@ -17,9 +17,14 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -51,11 +56,12 @@ import com.pizzanat.app.presentation.components.OptimizedAsyncImage
 import com.pizzanat.app.presentation.components.FoxCircularProductImageMedium
 import com.pizzanat.app.presentation.components.FoxProductCard
 import com.pizzanat.app.presentation.components.FloatingCartButton
+import com.pizzanat.app.presentation.components.clearImageCache
 import java.text.NumberFormat
 import java.util.*
 import androidx.compose.ui.graphics.Color
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun CategoryProductsScreen(
     categoryId: Long = 0L,
@@ -67,6 +73,17 @@ fun CategoryProductsScreen(
     viewModel: CategoryProductsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    
+    // Pull-to-Refresh состояние
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = uiState.isRefreshing,
+        onRefresh = {
+            // Очищаем кеш изображений при обновлении
+            clearImageCache(context)
+            viewModel.refresh()
+        }
+    )
     
     // Устанавливаем ID и название категории в ViewModel
     LaunchedEffect(categoryId, categoryName) {
@@ -128,50 +145,83 @@ fun CategoryProductsScreen(
                             color = Color.Black
                         )
                     }
+                    
+                    // Кнопка обновления с очисткой кеша
+                    IconButton(onClick = { 
+                        clearImageCache(context)
+                        viewModel.refresh()
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Обновить и очистить кеш",
+                            tint = Color.Black
+                        )
+                    }
                 }
             }
             
-            // Content
-            when {
-                uiState.isLoading && uiState.products.isEmpty() -> {
-                    LoadingContent()
-                }
-                uiState.error != null && uiState.products.isEmpty() -> {
-                    ErrorContent(
-                        error = uiState.error ?: "Неизвестная ошибка",
-                        onRetry = { viewModel.loadProducts() },
-                        onDismissError = { viewModel.clearError() }
-                    )
-                }
-                uiState.products.isEmpty() -> {
-                    EmptyContent(
-                        categoryName = categoryName,
-                        onRetry = { viewModel.loadProducts() }
-                    )
-                }
-                else -> {
-                    // Сетка товаров в стиле Fox Whiskers
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp),
-                        contentPadding = PaddingValues(
-                            top = 16.dp,
-                            bottom = 80.dp // Дополнительное место для floating кнопки
-                        ),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(uiState.products) { product ->
-                            FoxProductCard(
-                                product = product,
-                                onProductClick = onNavigateToProduct,
-                                onAddToCart = { viewModel.addToCart(it) }
-                            )
+            // Content с Pull-to-Refresh
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pullRefresh(pullRefreshState)
+            ) {
+                when {
+                    uiState.isLoading && uiState.products.isEmpty() -> {
+                        LoadingContent()
+                    }
+                    uiState.error != null && uiState.products.isEmpty() -> {
+                        ErrorContent(
+                            error = uiState.error ?: "Неизвестная ошибка",
+                            onRetry = { 
+                                clearImageCache(context)
+                                viewModel.loadProducts() 
+                            },
+                            onDismissError = { viewModel.clearError() }
+                        )
+                    }
+                    uiState.products.isEmpty() -> {
+                        EmptyContent(
+                            categoryName = categoryName,
+                            onRetry = { 
+                                clearImageCache(context)
+                                viewModel.loadProducts() 
+                            }
+                        )
+                    }
+                    else -> {
+                        // Сетка товаров в стиле Fox Whiskers
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(2),
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(
+                                start = 16.dp,
+                                end = 16.dp,
+                                top = 16.dp,
+                                bottom = 80.dp // Дополнительное место для floating кнопки
+                            ),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(uiState.products) { product ->
+                                FoxProductCard(
+                                    product = product,
+                                    onProductClick = onNavigateToProduct,
+                                    onAddToCart = { viewModel.addToCart(it) }
+                                )
+                            }
                         }
                     }
                 }
+                
+                // Pull-to-Refresh индикатор
+                PullRefreshIndicator(
+                    refreshing = uiState.isRefreshing,
+                    state = pullRefreshState,
+                    modifier = Modifier.align(Alignment.TopCenter),
+                    backgroundColor = Color.White,
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
             }
             
             // Показываем ошибку как Snackbar если есть продукты

@@ -1,8 +1,9 @@
 /**
  * @file: SplashScreen.kt
- * @description: Экран загрузки для диагностики приложения
- * @dependencies: Compose
+ * @description: Экран загрузки с проверкой авторизации пользователя
+ * @dependencies: Compose, Hilt, TokenManager
  * @created: 2024-12-19
+ * @updated: 2024-12-20 - Добавлена проверка авторизации
  */
 package com.pizzanat.app.presentation.splash
 
@@ -17,19 +18,28 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 
 @Composable
 fun SplashScreen(
     onNavigateToAuth: () -> Unit,
-    modifier: Modifier = Modifier
+    onNavigateToHome: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: SplashViewModel = hiltViewModel()
 ) {
-    var isLoading by remember { mutableStateOf(true) }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     
-    LaunchedEffect(Unit) {
-        delay(2000) // 2 секунды задержки
-        isLoading = false
-        onNavigateToAuth()
+    // Обработка навигации на основе состояния авторизации
+    LaunchedEffect(uiState.authCheckCompleted) {
+        if (uiState.authCheckCompleted) {
+            if (uiState.isAuthenticated) {
+                onNavigateToHome()
+            } else {
+                onNavigateToAuth()
+            }
+        }
     }
     
     Column(
@@ -77,18 +87,30 @@ fun SplashScreen(
         
         Spacer(modifier = Modifier.height(48.dp))
         
-        if (isLoading) {
+        if (!uiState.authCheckCompleted) {
             CircularProgressIndicator(
                 color = MaterialTheme.colorScheme.primary
             )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Text(
+                text = if (uiState.isCheckingAuth) "Проверка авторизации..." else "Загрузка...",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+            )
         }
         
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Text(
-            text = "Загрузка...",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-        )
+        // Отображение ошибки, если есть
+        if (uiState.error != null) {
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Text(
+                text = "Ошибка: ${uiState.error}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                textAlign = TextAlign.Center
+            )
+        }
     }
 } 
