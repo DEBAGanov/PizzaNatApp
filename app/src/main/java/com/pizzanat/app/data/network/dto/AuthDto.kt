@@ -11,6 +11,8 @@ import com.google.gson.annotations.SerializedName
 data class AuthResponseDto(
     @SerializedName("token")
     val token: String,
+    @SerializedName("userId")
+    val userId: Long,
     @SerializedName("username")
     val username: String,
     @SerializedName("email")
@@ -20,9 +22,7 @@ data class AuthResponseDto(
     @SerializedName("lastName")
     val lastName: String,
     @SerializedName("phone")
-    val phone: String? = null,
-    @SerializedName("id")
-    val id: Long? = null
+    val phone: String? = null
 )
 
 data class ErrorResponseDto(
@@ -68,7 +68,7 @@ data class RegisterRequestDto(
     @SerializedName("lastName")
     val lastName: String,
     @SerializedName("phone")
-    val phone: String
+    val phone: String? = null
 )
 
 // Telegram Auth DTOs

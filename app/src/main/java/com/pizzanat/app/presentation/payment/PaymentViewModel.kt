@@ -10,9 +10,11 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pizzanat.app.domain.entities.DeliveryMethod
+import com.pizzanat.app.domain.entities.Order
 import com.pizzanat.app.domain.entities.PaymentMethod
 import com.pizzanat.app.domain.repositories.AuthRepository
 import com.pizzanat.app.domain.usecases.order.CreateOrderUseCase
+import com.pizzanat.app.domain.usecases.order.GetUserOrdersUseCase
 import com.pizzanat.app.presentation.checkout.OrderData
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,12 +32,14 @@ data class PaymentUiState(
     val isCreatingOrder: Boolean = false,
     val orderCreated: Boolean = false,
     val createdOrderId: Long? = null,
+    val createdOrder: Order? = null,
     val error: String? = null
 )
 
 @HiltViewModel
 class PaymentViewModel @Inject constructor(
     private val createOrderUseCase: CreateOrderUseCase,
+    private val getUserOrdersUseCase: GetUserOrdersUseCase,
     private val authRepository: AuthRepository
 ) : ViewModel() {
     
@@ -130,11 +134,36 @@ class PaymentViewModel @Inject constructor(
                 if (result.isSuccess) {
                     val orderId = result.getOrNull()
                     Log.d("PaymentViewModel", "Заказ успешно создан с ID: $orderId")
-                    _uiState.value = _uiState.value.copy(
-                        isCreatingOrder = false,
-                        orderCreated = true,
-                        createdOrderId = orderId
-                    )
+                    
+                    // Получаем полную информацию о созданном заказе
+                    if (orderId != null) {
+                        try {
+                            val ordersResult = getUserOrdersUseCase.getUserOrders(currentUser.id)
+                            val orders = ordersResult.getOrNull()
+                            val createdOrder = orders?.find { it.id == orderId }
+                            Log.d("PaymentViewModel", "Найден созданный заказ: $createdOrder")
+                            
+                            _uiState.value = _uiState.value.copy(
+                                isCreatingOrder = false,
+                                orderCreated = true,
+                                createdOrderId = orderId,
+                                createdOrder = createdOrder
+                            )
+                        } catch (e: Exception) {
+                            Log.e("PaymentViewModel", "Ошибка получения созданного заказа: ${e.message}")
+                            _uiState.value = _uiState.value.copy(
+                                isCreatingOrder = false,
+                                orderCreated = true,
+                                createdOrderId = orderId
+                            )
+                        }
+                    } else {
+                        _uiState.value = _uiState.value.copy(
+                            isCreatingOrder = false,
+                            orderCreated = true,
+                            createdOrderId = orderId
+                        )
+                    }
                 } else {
                     val error = result.exceptionOrNull()?.message ?: "Ошибка создания заказа"
                     Log.e("PaymentViewModel", "Ошибка создания заказа: $error")
@@ -160,7 +189,8 @@ class PaymentViewModel @Inject constructor(
     fun resetOrderCreated() {
         _uiState.value = _uiState.value.copy(
             orderCreated = false,
-            createdOrderId = null
+            createdOrderId = null,
+            createdOrder = null
         )
     }
 } 

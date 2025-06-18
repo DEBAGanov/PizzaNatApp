@@ -11,9 +11,8 @@ import com.pizzanat.app.data.local.dao.CartDao
 import com.pizzanat.app.data.local.entities.CartItemEntity
 import com.pizzanat.app.data.mappers.toDomain
 import com.pizzanat.app.data.mappers.toEntity
-import com.pizzanat.app.data.mappers.toCartItems
-import com.pizzanat.app.data.mappers.toAddToCartRequest
-import com.pizzanat.app.data.mappers.createUpdateCartItemRequest
+import com.pizzanat.app.data.remote.dto.AddToCartRequest
+import com.pizzanat.app.data.remote.dto.UpdateCartItemRequest
 import com.pizzanat.app.data.remote.api.CartApiService
 import com.pizzanat.app.data.remote.util.safeApiCall
 import com.pizzanat.app.domain.entities.CartItem
@@ -46,7 +45,7 @@ class CartRepositoryImpl @Inject constructor(
             if (apiResult.isSuccess) {
                 val cartDto = apiResult.getOrNull()
                 if (cartDto != null) {
-                    val cartItems = cartDto.toCartItems()
+                    val cartItems = cartDto.toDomain()
                     
                     // Синхронизируем с локальной базой
                     syncCartWithLocal(cartItems)
@@ -78,7 +77,7 @@ class CartRepositoryImpl @Inject constructor(
     ): Result<Unit> = withContext(Dispatchers.IO) {
         return@withContext try {
             // Пробуем добавить через API
-            val request = com.pizzanat.app.data.remote.dto.AddToCartRequest(productId, quantity)
+            val request = AddToCartRequest(productId, quantity)
             val apiResult = safeApiCall { cartApiService.addToCart(request) }
             
             if (apiResult.isSuccess) {
@@ -110,7 +109,7 @@ class CartRepositoryImpl @Inject constructor(
                 removeFromCart(cartItemId)
             } else {
                 // Пробуем обновить через API
-                val request = createUpdateCartItemRequest(quantity)
+                val request = UpdateCartItemRequest(quantity)
                 val apiResult = safeApiCall { cartApiService.updateCartItem(productId, request) }
                 
                 if (apiResult.isSuccess) {

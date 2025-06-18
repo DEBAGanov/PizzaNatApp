@@ -27,7 +27,7 @@ class AddToCartUseCase @Inject constructor(
                 productId = product.id,
                 productName = product.name,
                 productPrice = product.price,
-                productImageUrl = product.imageUrl,
+                productImageUrl = product.imageUrl ?: "",
                 quantity = quantity
             )
         } catch (e: Exception) {

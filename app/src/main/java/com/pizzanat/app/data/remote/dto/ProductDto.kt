@@ -49,7 +49,9 @@ data class CategoryDto(
     @SerializedName("description")
     val description: String,
     @SerializedName("imageUrl")
-    val imageUrl: String
+    val imageUrl: String,
+    @SerializedName("displayOrder")
+    val displayOrder: Int? = null
 )
 
 /**
@@ -75,7 +77,9 @@ data class ProductsPageResponse(
     @SerializedName("first")
     val first: Boolean,
     @SerializedName("empty")
-    val empty: Boolean
+    val empty: Boolean,
+    @SerializedName("sort")
+    val sort: SortDto? = null
 )
 
 /**
@@ -91,7 +95,21 @@ data class PageableDto(
     @SerializedName("paged")
     val paged: Boolean,
     @SerializedName("unpaged")
-    val unpaged: Boolean
+    val unpaged: Boolean,
+    @SerializedName("sort")
+    val sort: SortDto? = null
+)
+
+/**
+ * DTO для информации о сортировке
+ */
+data class SortDto(
+    @SerializedName("empty")
+    val empty: Boolean,
+    @SerializedName("sorted")
+    val sorted: Boolean,
+    @SerializedName("unsorted")
+    val unsorted: Boolean
 )
 
 /**

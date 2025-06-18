@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -179,7 +180,7 @@ fun TelegramAuthScreen(
                 }
             }
             
-            // Показ ошибки
+            // Показ ошибки с альтернативными вариантами
             if (uiState.error != null) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -187,12 +188,66 @@ fun TelegramAuthScreen(
                         containerColor = MaterialTheme.colorScheme.errorContainer
                     )
                 ) {
-                    Text(
-                        text = uiState.error ?: "",
+                    Column(
                         modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onErrorContainer
-                    )
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = uiState.error ?: "",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        
+                        // Если Telegram недоступен, предлагаем альтернативы
+                        if (uiState.error?.contains("недоступна") == true || 
+                            uiState.error?.contains("503") == true) {
+                            
+                            Divider(color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.3f))
+                            
+                            Text(
+                                text = "Альтернативные способы входа:",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                                                 OutlinedButton(
+                                     onClick = { 
+                                         // TODO: Переход на SMS авторизацию
+                                         onNavigateBack()
+                                     },
+                                     modifier = Modifier.weight(1f),
+                                     colors = ButtonDefaults.outlinedButtonColors(
+                                         contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                     ),
+                                     border = BorderStroke(
+                                         1.dp, 
+                                         MaterialTheme.colorScheme.onErrorContainer
+                                     )
+                                 ) {
+                                     Text("SMS код", style = MaterialTheme.typography.bodySmall)
+                                 }
+                                
+                                                                 OutlinedButton(
+                                     onClick = onNavigateBack,
+                                     modifier = Modifier.weight(1f),
+                                     colors = ButtonDefaults.outlinedButtonColors(
+                                         contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                     ),
+                                     border = BorderStroke(
+                                         1.dp, 
+                                         MaterialTheme.colorScheme.onErrorContainer
+                                     )
+                                 ) {
+                                     Text("Email/Пароль", style = MaterialTheme.typography.bodySmall)
+                                 }
+                            }
+                        }
+                    }
                 }
             }
             

@@ -13,19 +13,13 @@ import com.google.gson.annotations.SerializedName
  */
 data class CartDto(
     @SerializedName("id")
-    val id: Long,
-    @SerializedName("userId")
-    val userId: Long,
+    val id: Long?,
+    @SerializedName("sessionId")
+    val sessionId: String?,
     @SerializedName("items")
     val items: List<CartItemDto>,
     @SerializedName("totalAmount")
-    val totalAmount: Double,
-    @SerializedName("itemsCount")
-    val itemsCount: Int,
-    @SerializedName("createdAt")
-    val createdAt: String,
-    @SerializedName("updatedAt")
-    val updatedAt: String
+    val totalAmount: Double
 )
 
 /**
@@ -38,16 +32,16 @@ data class CartItemDto(
     val productId: Long,
     @SerializedName("productName")
     val productName: String,
-    @SerializedName("productPrice")
-    val productPrice: Double,
+    @SerializedName("price")
+    val price: Double,
+    @SerializedName("discountedPrice")
+    val discountedPrice: Double?,
     @SerializedName("productImageUrl")
     val productImageUrl: String?,
     @SerializedName("quantity")
     val quantity: Int,
-    @SerializedName("totalPrice")
-    val totalPrice: Double,
-    @SerializedName("selectedOptions")
-    val selectedOptions: Map<String, String>? = emptyMap()
+    @SerializedName("subtotal")
+    val subtotal: Double
 )
 
 /**

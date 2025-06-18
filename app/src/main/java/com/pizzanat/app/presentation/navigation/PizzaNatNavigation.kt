@@ -18,6 +18,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -40,6 +41,7 @@ import com.pizzanat.app.presentation.profile.ProfileScreen
 import com.pizzanat.app.presentation.splash.SplashScreen
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.runtime.remember
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pizzanat.app.presentation.notifications.NotificationsScreen
 import com.pizzanat.app.presentation.admin.login.AdminLoginScreen
 import com.pizzanat.app.presentation.admin.dashboard.AdminDashboardScreen
@@ -50,6 +52,7 @@ import androidx.navigation.NavType
 import com.pizzanat.app.presentation.auth.phone.PhoneAuthScreen
 import com.pizzanat.app.presentation.auth.phone.SmsCodeScreen
 import com.pizzanat.app.presentation.auth.telegram.TelegramAuthScreen
+import com.pizzanat.app.presentation.order.OrderSuccessScreen
 
 /**
  * Маршруты навигации приложения
@@ -68,6 +71,7 @@ object PizzaNatRoutes {
     const val CART = "cart"
     const val CHECKOUT = "checkout"
     const val PAYMENT = "payment/{orderTotal}"
+    const val ORDER_SUCCESS = "order_success/{orderId}"
     const val PROFILE = "profile"
     const val NOTIFICATIONS = "notifications"
     
@@ -82,6 +86,7 @@ object PizzaNatRoutes {
     fun productDetail(productId: Long) = "product_detail/$productId"
     fun smsCode(phoneNumber: String) = "sms_code/$phoneNumber"
     fun payment(orderTotal: Double) = "payment/$orderTotal"
+    fun orderSuccess(orderId: Long) = "order_success/$orderId"
 }
 
 /**
@@ -231,7 +236,11 @@ fun PizzaNatNavigation(
         ) { backStackEntry ->
             val categoryId = backStackEntry.arguments?.getLong("categoryId") ?: 0L
             val categoryName = backStackEntry.arguments?.getString("categoryName") ?: ""
+            
+            android.util.Log.d("PizzaNatNavigation", "Навигация к категории: ID=$categoryId, Name=$categoryName")
+            
             CategoryProductsScreen(
+                categoryId = categoryId,
                 categoryName = categoryName,
                 onNavigateBack = { navController.navigateUp() },
                 onNavigateToProduct = { product ->
@@ -320,11 +329,79 @@ fun PizzaNatNavigation(
                 orderData = orderData,
                 onNavigateBack = { navController.navigateUp() },
                 onOrderCreated = { orderId ->
-                    navController.navigate(PizzaNatRoutes.HOME) {
+                    navController.navigate(PizzaNatRoutes.orderSuccess(orderId)) {
+                        popUpTo(PizzaNatRoutes.HOME) { inclusive = false }
+                    }
+                },
+                onOrderSuccess = { order ->
+                    navController.navigate(PizzaNatRoutes.orderSuccess(order.id)) {
                         popUpTo(PizzaNatRoutes.HOME) { inclusive = false }
                     }
                 }
             )
+        }
+        
+        // Экран успешного заказа
+        composable(
+            route = "order_success/{orderId}",
+            arguments = listOf(
+                navArgument("orderId") { type = NavType.LongType }
+            )
+        ) { backStackEntry ->
+            val orderId = backStackEntry.arguments?.getLong("orderId") ?: 0L
+            
+            // Получаем данные заказа из PaymentViewModel если доступны
+            val parentEntry = remember(backStackEntry) {
+                try {
+                    navController.getBackStackEntry(PizzaNatRoutes.PAYMENT)
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            val paymentViewModel: com.pizzanat.app.presentation.payment.PaymentViewModel? = 
+                if (parentEntry != null) hiltViewModel(parentEntry) else null
+            
+            if (paymentViewModel != null) {
+                val paymentUiState by paymentViewModel.uiState.collectAsStateWithLifecycle()
+                val createdOrder = paymentUiState.createdOrder
+                
+                if (createdOrder != null) {
+                    // Показываем экран с полной информацией о заказе
+                    OrderSuccessScreen(
+                        order = createdOrder,
+                        onNavigateToHome = {
+                            navController.navigate(PizzaNatRoutes.HOME) {
+                                popUpTo(PizzaNatRoutes.HOME) { inclusive = false }
+                            }
+                        },
+                        onViewOrderDetails = {
+                            navController.navigate(PizzaNatRoutes.PROFILE) {
+                                popUpTo(PizzaNatRoutes.HOME) { inclusive = false }
+                            }
+                        }
+                    )
+                } else {
+                    // Fallback - показываем простое сообщение об успехе
+                    OrderSuccessFallback(
+                        orderId = orderId,
+                        onNavigateToHome = {
+                            navController.navigate(PizzaNatRoutes.HOME) {
+                                popUpTo(PizzaNatRoutes.HOME) { inclusive = false }
+                            }
+                        }
+                    )
+                }
+            } else {
+                // Fallback когда PaymentViewModel недоступен
+                OrderSuccessFallback(
+                    orderId = orderId,
+                    onNavigateToHome = {
+                        navController.navigate(PizzaNatRoutes.HOME) {
+                            popUpTo(PizzaNatRoutes.HOME) { inclusive = false }
+                        }
+                    }
+                )
+            }
         }
         
         // Экран уведомлений
@@ -523,5 +600,41 @@ private fun SplashScreenPlaceholder(
             text = "Загрузка...",
             style = MaterialTheme.typography.bodyLarge
         )
+    }
+}
+
+/**
+ * Временная заглушка для успешного заказа
+ */
+@Composable
+private fun OrderSuccessFallback(
+    orderId: Long,
+    onNavigateToHome: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "✅ Заказ успешно оформлен!",
+            style = MaterialTheme.typography.headlineMedium,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Номер заказа: #$orderId",
+            style = MaterialTheme.typography.titleLarge,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+        Button(
+            onClick = onNavigateToHome,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("На главную")
+        }
     }
 } 

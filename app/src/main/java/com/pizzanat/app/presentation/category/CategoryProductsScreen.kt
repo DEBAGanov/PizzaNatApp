@@ -58,6 +58,7 @@ import androidx.compose.ui.graphics.Color
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategoryProductsScreen(
+    categoryId: Long = 0L,
     categoryName: String = "",
     onNavigateBack: () -> Unit = {},
     onNavigateToProduct: (Product) -> Unit = {},
@@ -67,8 +68,17 @@ fun CategoryProductsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     
-    // Устанавливаем название категории в ViewModel
-    LaunchedEffect(categoryName) {
+    // Устанавливаем ID и название категории в ViewModel
+    LaunchedEffect(categoryId, categoryName) {
+        android.util.Log.d("CategoryProductsScreen", "LaunchedEffect: categoryId=$categoryId, categoryName=$categoryName")
+        android.util.Log.d("CategoryProductsScreen", "Current ViewModel state categoryId: ${uiState.categoryId}")
+        
+        if (categoryId > 0) {
+            viewModel.setCategoryId(categoryId)
+        } else {
+            android.util.Log.e("CategoryProductsScreen", "ОШИБКА: Получен некорректный categoryId=$categoryId")
+        }
+        
         if (categoryName.isNotBlank()) {
             viewModel.setCategoryName(categoryName)
         }

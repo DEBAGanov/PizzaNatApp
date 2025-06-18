@@ -30,9 +30,21 @@ class ProductRepositoryImpl @Inject constructor(
 ) : ProductRepository {
     
     override suspend fun getCategories(): Result<List<Category>> = withContext(Dispatchers.IO) {
-        val apiResult = safeApiCall { productApiService.getCategories() }
+        Log.d("ProductRepository", "🌐 Запрос категорий")
+        val apiResult = safeApiCall { 
+            productApiService.getCategories() 
+        }
         apiResult.toResult().map { categories ->
             categories?.toCategoryDomain() ?: emptyList()
+        }.also { result ->
+            if (result.isSuccess) {
+                Log.d("ProductRepository", "✅ Категории загружены: ${result.getOrNull()?.size} категорий")
+                result.getOrNull()?.forEach { category ->
+                    Log.d("ProductRepository", "📂 Категория: ${category.name} (ID: ${category.id})")
+                }
+            } else {
+                Log.w("ProductRepository", "❌ Ошибка загрузки категорий: ${result.exceptionOrNull()?.message}")
+            }
         }
     }
     
@@ -41,25 +53,42 @@ class ProductRepositoryImpl @Inject constructor(
         page: Int,
         size: Int
     ): Result<List<Product>> = withContext(Dispatchers.IO) {
+        Log.d("ProductRepository", "🌐 Запрос продуктов категории $categoryId, страница $page, размер $size")
+        Log.d("ProductRepository", "🌐 URL: products/category/$categoryId?page=$page&size=$size")
+        
         val apiResult = safeApiCall { 
             productApiService.getProductsByCategory(categoryId, page, size) 
         }
         apiResult.toResult().map { pageResponse ->
             // Используем новый маппер для пагинированного ответа
-            pageResponse?.toProductsDomain() ?: emptyList()
+            val products = pageResponse?.toProductsDomain() ?: emptyList()
+            Log.d("ProductRepository", "📦 Получено продуктов: ${products.size}")
+            products.forEach { product ->
+                Log.d("ProductRepository", "🍕 Продукт: ${product.name} (ID: ${product.id}, Цена: ${product.price}₽)")
+            }
+            products
         }.also { result ->
             if (result.isSuccess) {
-                Log.d("ProductRepository", "Продукты категории $categoryId загружены: ${result.getOrNull()?.size} товаров")
+                Log.d("ProductRepository", "✅ Продукты категории $categoryId загружены: ${result.getOrNull()?.size} товаров")
             } else {
-                Log.w("ProductRepository", "Ошибка загрузки продуктов категории $categoryId: ${result.exceptionOrNull()?.message}")
+                Log.w("ProductRepository", "❌ Ошибка загрузки продуктов категории $categoryId: ${result.exceptionOrNull()?.message}")
+                result.exceptionOrNull()?.printStackTrace()
             }
         }
     }
     
     override suspend fun getProductById(productId: Long): Result<Product> = withContext(Dispatchers.IO) {
-        val apiResult = safeApiCall { productApiService.getProductById(productId) }
+        val apiResult = safeApiCall { 
+            productApiService.getProductById(productId) 
+        }
         apiResult.toResult().map { productDto ->
             productDto?.toDomain() ?: throw Exception("Продукт не найден")
+        }.also { result ->
+            if (result.isSuccess) {
+                Log.d("ProductRepository", "Продукт с ID $productId загружен: ${result.getOrNull()?.name}")
+            } else {
+                Log.w("ProductRepository", "Ошибка загрузки продукта с ID $productId: ${result.exceptionOrNull()?.message}")
+            }
         }
     }
     
@@ -68,31 +97,24 @@ class ProductRepositoryImpl @Inject constructor(
         page: Int,
         size: Int
     ): Result<List<Product>> = withContext(Dispatchers.IO) {
-        if (query.isBlank()) {
-            return@withContext Result.success(emptyList())
-        }
-        
         val apiResult = safeApiCall { 
             productApiService.searchProducts(query, page, size) 
         }
         apiResult.toResult().map { pageResponse ->
             // Используем новый маппер для пагинированного ответа
             pageResponse?.toProductsDomain() ?: emptyList()
+        }.also { result ->
+            if (result.isSuccess) {
+                Log.d("ProductRepository", "Поиск по запросу '$query' завершен: ${result.getOrNull()?.size} товаров")
+            } else {
+                Log.w("ProductRepository", "Ошибка поиска по запросу '$query': ${result.exceptionOrNull()?.message}")
+            }
         }
     }
     
     override suspend fun getSpecialOffers(): Result<List<Product>> = withContext(Dispatchers.IO) {
-        // Используем правильный эндпоинт специальных предложений из микросервиса
-        val apiResult = safeApiCall { productApiService.getSpecialOffers() }
-        apiResult.toResult().map { products ->
-            products?.toProductDomain() ?: emptyList()
-        }.also { result ->
-            if (result.isSuccess) {
-                Log.d("ProductRepository", "Специальные предложения загружены: ${result.getOrNull()?.size} товаров")
-            } else {
-                Log.w("ProductRepository", "Ошибка загрузки специальных предложений: ${result.exceptionOrNull()?.message}")
-            }
-        }
+        // Пока возвращаем пустой список, т.к. API не готов
+        Result.success(emptyList())
     }
     
     suspend fun getPopularProducts(limit: Int = 10): Result<List<Product>> = withContext(Dispatchers.IO) {
@@ -111,15 +133,17 @@ class ProductRepositoryImpl @Inject constructor(
     
     // Пока заглушки для избранных продуктов (будет реализовано в будущем с Room)
     override fun getFavoriteProducts(): Flow<List<Product>> {
-        // TODO: Implement with Room database
+        // Пока возвращаем пустой поток, т.к. функционал не реализован
         return flowOf(emptyList())
     }
     
     override suspend fun addToFavorites(productId: Long) {
-        // TODO: Implement with Room database
+        // Пока ничего не делаем, т.к. функционал не реализован
+        Log.d("ProductRepository", "Добавление в избранное пока не реализовано: $productId")
     }
     
     override suspend fun removeFromFavorites(productId: Long) {
-        // TODO: Implement with Room database
+        // Пока ничего не делаем, т.к. функционал не реализован
+        Log.d("ProductRepository", "Удаление из избранного пока не реализовано: $productId")
     }
 } 

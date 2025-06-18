@@ -144,7 +144,7 @@ private fun OptimizedProductCard(
         ) {
             
             // Круглое изображение продукта (как на скриншотах)
-            CircularProductImage(
+            FoxCircularProductImageMedium(
                 imageUrl = product.imageUrl,
                 contentDescription = product.name,
                 size = 80.dp, // Увеличиваем размер для лучшей видимости
@@ -275,7 +275,7 @@ private fun CompactProductCard(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             
-            CircularProductImage(
+            FoxCircularProductImageMedium(
                 imageUrl = product.imageUrl,
                 contentDescription = product.name,
                 size = 50.dp

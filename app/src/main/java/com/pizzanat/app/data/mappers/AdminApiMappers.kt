@@ -54,7 +54,7 @@ fun Product.toCreateRequest(): CreateProductRequest {
         description = description,
         price = price,
         categoryId = categoryId,
-        imageUrl = imageUrl,
+        imageUrl = imageUrl ?: "",
         available = available
     )
 }
@@ -68,7 +68,7 @@ fun Product.toUpdateRequest(): UpdateProductRequest {
         description = description,
         price = price,
         categoryId = categoryId,
-        imageUrl = imageUrl,
+        imageUrl = imageUrl ?: "",
         available = available
     )
 }

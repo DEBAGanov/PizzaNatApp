@@ -14,6 +14,7 @@ import com.pizzanat.app.data.local.dao.CartDao
 import com.pizzanat.app.data.local.dao.NotificationDao
 import com.pizzanat.app.data.network.api.AuthApiService
 import com.pizzanat.app.data.remote.api.CartApiService
+import com.pizzanat.app.data.remote.api.NotificationApiService
 import com.pizzanat.app.data.repositories.*
 import com.pizzanat.app.domain.repositories.*
 import dagger.Module
@@ -39,14 +40,8 @@ object RepositoryModule {
         tokenManager: TokenManager,
         userManager: UserManager
     ): AuthRepository {
-        
-        return if (BuildConfig.USE_MOCK_DATA && BuildConfig.DEBUG) {
-            // Debug режим с mock данными для разработки UI
-            MockAuthRepositoryImpl(tokenManager, userManager)
-        } else {
-            // Production/Staging или Debug с реальным API для тестирования интеграции
-            AuthRepositoryImpl(authApiService, tokenManager, userManager)
-        }
+        // Всегда используем реальный API - Stage 13 интеграция
+        return AuthRepositoryImpl(authApiService, tokenManager, userManager)
     }
     
     @Provides
@@ -62,7 +57,8 @@ object RepositoryModule {
     fun provideOrderRepository(
         orderApiService: com.pizzanat.app.data.remote.api.OrderApiService
     ): OrderRepository {
-        return MockOrderRepositoryImpl()
+        // Stage 13 интеграция - используем реальный API
+        return OrderRepositoryImpl(orderApiService)
     }
     
     @Provides
@@ -71,15 +67,25 @@ object RepositoryModule {
         cartDao: CartDao,
         cartApiService: CartApiService
     ): CartRepository {
+        // Всегда используем реальный API - Stage 13 интеграция
         return CartRepositoryImpl(cartDao, cartApiService)
     }
     
     @Provides
     @Singleton
     fun provideNotificationRepository(
+        notificationApiService: NotificationApiService,
         notificationDao: NotificationDao,
         dataStore: DataStore<Preferences>
     ): NotificationRepository {
-        return MockNotificationRepositoryImpl(notificationDao, dataStore)
+        // Stage 13 интеграция - готовим структуру для Backend API
+        // Пока Backend API не готов (500 ошибки), используем mock
+        return if (BuildConfig.DEBUG && BuildConfig.USE_MOCK_DATA) {
+            MockNotificationRepositoryImpl(notificationDao, dataStore)
+        } else {
+            // Когда Backend API будет готов, переключаемся на реальную реализацию
+            MockNotificationRepositoryImpl(notificationDao, dataStore)
+            // NotificationRepositoryImpl(notificationApiService, notificationDao, dataStore)
+        }
     }
 } 

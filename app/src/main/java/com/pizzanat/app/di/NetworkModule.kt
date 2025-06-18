@@ -18,6 +18,7 @@ import com.pizzanat.app.data.network.interceptors.AuthInterceptor
 import com.pizzanat.app.data.remote.api.AdminApiService
 import com.pizzanat.app.data.remote.api.CartApiService
 import com.pizzanat.app.data.remote.api.DeliveryApiService
+import com.pizzanat.app.data.remote.api.NotificationApiService
 import com.pizzanat.app.data.remote.api.OrderApiService
 import com.pizzanat.app.data.remote.api.ProductApiService
 import com.pizzanat.app.data.repositories.TokenManager
@@ -145,5 +146,11 @@ object NetworkModule {
     @Singleton
     fun provideDeliveryApiService(retrofit: Retrofit): DeliveryApiService {
         return retrofit.create(DeliveryApiService::class.java)
+    }
+    
+    @Provides
+    @Singleton
+    fun provideNotificationApiService(retrofit: Retrofit): NotificationApiService {
+        return retrofit.create(NotificationApiService::class.java)
     }
 } 

@@ -26,25 +26,25 @@ interface CartApiService {
     @POST("cart/items")
     suspend fun addToCart(
         @Body request: AddToCartRequest
-    ): Response<Void>
+    ): Response<CartDto>
     
     /**
      * Изменить количество товара в корзине
-     * PUT /api/v1/cart/items/{productId}
+     * PUT /api/v1/cart/items/{itemId}
      */
-    @PUT("cart/items/{productId}")
+    @PUT("cart/items/{itemId}")
     suspend fun updateCartItem(
-        @Path("productId") productId: Long,
+        @Path("itemId") itemId: Long,
         @Body request: UpdateCartItemRequest
-    ): Response<Void>
+    ): Response<CartDto>
     
     /**
      * Удалить товар из корзины
-     * DELETE /api/v1/cart/items/{productId}
+     * DELETE /api/v1/cart/items/{itemId}
      */
-    @DELETE("cart/items/{productId}")
+    @DELETE("cart/items/{itemId}")
     suspend fun removeFromCart(
-        @Path("productId") productId: Long
+        @Path("itemId") itemId: Long
     ): Response<Void>
     
     /**

@@ -43,6 +43,7 @@ fun PaymentScreen(
     orderData: OrderData? = null,
     onNavigateBack: () -> Unit = {},
     onOrderCreated: (Long) -> Unit = {},
+    onOrderSuccess: (com.pizzanat.app.domain.entities.Order) -> Unit = {},
     viewModel: PaymentViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -62,8 +63,14 @@ fun PaymentScreen(
     
     // Обработка успешного создания заказа
     LaunchedEffect(uiState.orderCreated) {
-        if (uiState.orderCreated && uiState.createdOrderId != null) {
-            onOrderCreated(uiState.createdOrderId!!)
+        if (uiState.orderCreated) {
+            if (uiState.createdOrder != null) {
+                // Если у нас есть полная информация о заказе, переходим на экран успеха
+                onOrderSuccess(uiState.createdOrder!!)
+            } else if (uiState.createdOrderId != null) {
+                // Fallback - переходим с ID заказа
+                onOrderCreated(uiState.createdOrderId!!)
+            }
             viewModel.resetOrderCreated()
         }
     }

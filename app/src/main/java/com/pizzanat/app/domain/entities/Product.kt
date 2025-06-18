@@ -11,9 +11,9 @@ data class Product(
     val name: String,
     val description: String,
     val price: Double,
-    val originalPrice: Double? = null, // Оригинальная цена до скидки
+    val discountedPrice: Double? = null, // Цена со скидкой из API
     val categoryId: Long,
-    val imageUrl: String,
+    val imageUrl: String?, // Изменено на nullable для совместимости с API
     val available: Boolean = true,
     val specialOffer: Boolean = false,
     val discountPercent: Int? = null, // Процент скидки
@@ -26,13 +26,19 @@ data class Product(
      * Есть ли скидка на продукт
      */
     val hasDiscount: Boolean
-        get() = originalPrice != null && discountPercent != null
+        get() = discountedPrice != null && discountPercent != null
         
     /**
      * Размер скидки в рублях
      */
     val discountAmount: Double
-        get() = if (hasDiscount && originalPrice != null) {
-            originalPrice - price
+        get() = if (hasDiscount && discountedPrice != null) {
+            price - discountedPrice
         } else 0.0
+        
+    /**
+     * Финальная цена (с учетом скидки)
+     */
+    val finalPrice: Double
+        get() = discountedPrice ?: price
 } 

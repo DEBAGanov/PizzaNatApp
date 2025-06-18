@@ -39,7 +39,7 @@ fun AuthResponseDto.toDomain(): AuthResponse {
     return AuthResponse(
         token = this.token,
         user = User(
-            id = this.id ?: generateUserIdFromEmail(this.email), // Используем ID из DTO или генерируем
+            id = this.userId, // Используем userId из Backend API
             username = this.username,
             email = this.email,
             firstName = this.firstName,

@@ -19,7 +19,7 @@ interface OrderApiService {
     @POST("orders")
     suspend fun createOrder(
         @Body request: CreateOrderRequest
-    ): Response<CreateOrderResponse>
+    ): Response<OrderDto>
     
     /**
      * Получить заказы текущего пользователя
@@ -29,7 +29,7 @@ interface OrderApiService {
     suspend fun getUserOrders(
         @Query("page") page: Int = 0,
         @Query("size") size: Int = 20
-    ): Response<OrdersResponse>
+    ): Response<AdminOrdersPageResponse>
     
     /**
      * Получить заказ по ID

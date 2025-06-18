@@ -54,6 +54,7 @@ import com.pizzanat.app.presentation.theme.CategoryPlateYellow
 import com.pizzanat.app.presentation.components.BadgedIcon
 import com.pizzanat.app.presentation.components.OptimizedAsyncImage
 import com.pizzanat.app.presentation.components.FoxCircularProductImageMedium
+import com.pizzanat.app.presentation.components.FoxCircularCategoryImage
 import com.pizzanat.app.presentation.components.FoxSearchBar
 import com.pizzanat.app.domain.usecases.notification.GetNotificationsUseCase
 
@@ -352,7 +353,7 @@ private fun FoxCategoryCard(
             verticalArrangement = Arrangement.Center
         ) {
             // Круглое изображение категории
-            FoxCircularProductImageMedium(
+            FoxCircularCategoryImage(
                 imageUrl = category.imageUrl,
                 contentDescription = category.name,
                 size = 80.dp

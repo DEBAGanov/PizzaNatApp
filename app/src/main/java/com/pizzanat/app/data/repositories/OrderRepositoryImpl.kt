@@ -8,7 +8,7 @@ package com.pizzanat.app.data.repositories
 
 import android.util.Log
 import com.pizzanat.app.data.mappers.toDomain
-import com.pizzanat.app.data.mappers.toDomainOrders
+import com.pizzanat.app.data.mappers.createOrderRequest
 import com.pizzanat.app.data.remote.api.OrderApiService
 import com.pizzanat.app.data.remote.util.safeApiCall
 import com.pizzanat.app.data.remote.util.ApiResult
@@ -23,8 +23,7 @@ import javax.inject.Singleton
 
 @Singleton
 class OrderRepositoryImpl @Inject constructor(
-    private val orderApiService: OrderApiService,
-    private val mockOrderRepository: MockOrderRepositoryImpl
+    private val orderApiService: OrderApiService
 ) : OrderRepository {
 
     /**
@@ -67,29 +66,12 @@ class OrderRepositoryImpl @Inject constructor(
                 Log.d("OrderRepository", "getUserOrdersFlow: Выдаем ${orders.size} заказов")
                 emit(orders)
             } else {
-                Log.w("OrderRepository", "getUserOrdersFlow: Ошибка API, используем mock данные")
-                val mockResult = mockOrderRepository.getUserOrders(userId)
-                if (mockResult.isSuccess) {
-                    val mockOrders = mockResult.getOrNull() ?: emptyList()
-                    emit(mockOrders)
-                } else {
-                    emit(emptyList())
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("OrderRepository", "getUserOrdersFlow: Исключение ${e.message}, используем mock данные")
-            try {
-                val mockResult = mockOrderRepository.getUserOrders(userId)
-                if (mockResult.isSuccess) {
-                    val mockOrders = mockResult.getOrNull() ?: emptyList()
-                    emit(mockOrders)
-                } else {
-                    emit(emptyList())
-                }
-            } catch (mockException: Exception) {
-                Log.e("OrderRepository", "getUserOrdersFlow: Mock тоже не работает: ${mockException.message}")
+                Log.w("OrderRepository", "getUserOrdersFlow: Ошибка API, возвращаем пустой список")
                 emit(emptyList())
             }
+        } catch (e: Exception) {
+            Log.e("OrderRepository", "getUserOrdersFlow: Исключение ${e.message}, возвращаем пустой список")
+            emit(emptyList())
         }
     }
 
@@ -107,8 +89,8 @@ class OrderRepositoryImpl @Inject constructor(
                     Log.d("OrderRepository", "API ответ получен: $ordersResponse")
                     
                     if (ordersResponse != null) {
-                        Log.d("OrderRepository", "Обработка заказов: ${ordersResponse.orders.size} записей")
-                        ordersResponse.orders.forEachIndexed { index, orderDto ->
+                        Log.d("OrderRepository", "Обработка заказов: ${ordersResponse.content.size} записей")
+                        ordersResponse.content.forEachIndexed { index, orderDto ->
                             Log.d("OrderRepository", "DTO Заказ $index: ID=${orderDto.id}, статус='${orderDto.status}', сумма=${orderDto.totalAmount}")
                             Log.d("OrderRepository", "  Адрес: '${orderDto.deliveryAddress}'")
                             Log.d("OrderRepository", "  Телефон: '${orderDto.contactPhone}'")
@@ -116,7 +98,7 @@ class OrderRepositoryImpl @Inject constructor(
                             Log.d("OrderRepository", "  Товаров: ${orderDto.items?.size ?: 0}")
                         }
                         
-                        val orders = ordersResponse.orders.toDomainOrders()
+                        val orders = ordersResponse.toDomain()
                         Log.d("OrderRepository", "Заказы пользователя загружены с API: ${orders.size}")
                         orders.forEach { order ->
                             Log.d("OrderRepository", "Domain Заказ: ID=${order.id}, статус=${order.status}, сумма=${order.totalAmount}₽")
@@ -128,28 +110,28 @@ class OrderRepositoryImpl @Inject constructor(
                         }
                         Result.success(orders)
                     } else {
-                        Log.w("OrderRepository", "Пустой ответ API заказов пользователя, используем mock")
-                        mockOrderRepository.getUserOrders(userId)
+                        Log.w("OrderRepository", "Пустой ответ API заказов пользователя")
+                        Result.success(emptyList())
                     }
                 }
                 is ApiResult.Error -> {
-                    Log.w("OrderRepository", "Ошибка API заказов пользователя: ${apiResult.message} (код: ${apiResult.code}), используем mock")
+                    Log.w("OrderRepository", "Ошибка API заказов пользователя: ${apiResult.message} (код: ${apiResult.code})")
                     
                     // Если ошибка 401, то проблема с токеном
                     if (apiResult.code == 401) {
                         Log.e("OrderRepository", "Проблема с авторизацией - возможно истек JWT токен")
                     }
                     
-                    mockOrderRepository.getUserOrders(userId)
+                    Result.failure(Exception("API Error: ${apiResult.message}"))
                 }
                 is ApiResult.NetworkError -> {
-                    Log.w("OrderRepository", "Сетевая ошибка при загрузке заказов: ${apiResult.message}, используем mock")
-                    mockOrderRepository.getUserOrders(userId)
+                    Log.w("OrderRepository", "Сетевая ошибка при загрузке заказов: ${apiResult.message}")
+                    Result.failure(Exception("Network Error: ${apiResult.message}"))
                 }
             }
         } catch (e: Exception) {
             Log.e("OrderRepository", "Исключение при получении заказов пользователя: ${e.message}", e)
-            mockOrderRepository.getUserOrders(userId)
+            Result.failure(e)
         }
     }
 
@@ -168,12 +150,12 @@ class OrderRepositoryImpl @Inject constructor(
                     Result.success(null)
                 }
             } else {
-                Log.w("OrderRepository", "Ошибка API заказа: ${apiResult.getErrorMessage()}, используем mock")
-                mockOrderRepository.getOrderById(orderId)
+                Log.w("OrderRepository", "Ошибка API заказа: ${apiResult.getErrorMessage()}")
+                Result.failure(Exception("API Error: ${apiResult.getErrorMessage()}"))
             }
         } catch (e: Exception) {
             Log.e("OrderRepository", "Исключение при получении заказа: ${e.message}")
-            mockOrderRepository.getOrderById(orderId)
+            Result.failure(e)
         }
     }
 
@@ -192,11 +174,11 @@ class OrderRepositoryImpl @Inject constructor(
             val normalizedPhone = normalizePhoneNumber(customerPhone)
             
             // Backend автоматически берет товары из корзины пользователя
-            val createOrderRequest = com.pizzanat.app.data.remote.dto.CreateOrderRequest(
+            val createOrderRequest = createOrderRequest(
                 deliveryAddress = deliveryAddress,
-                contactPhone = normalizedPhone,
                 contactName = customerName,
-                notes = notes
+                contactPhone = normalizedPhone,
+                comment = notes
             )
             
             Log.d("OrderRepository", "Создание заказа через API: deliveryAddress=$deliveryAddress, contactName=$customerName")
@@ -205,21 +187,21 @@ class OrderRepositoryImpl @Inject constructor(
             val apiResult = safeApiCall { orderApiService.createOrder(createOrderRequest) }
             
             if (apiResult.isSuccess) {
-                val createResponse = apiResult.getOrNull()
-                if (createResponse != null) {
-                    Log.d("OrderRepository", "Заказ создан через API: ${createResponse.id}")
-                    Result.success(createResponse.id)
+                val orderDto = apiResult.getOrNull()
+                if (orderDto != null) {
+                    Log.d("OrderRepository", "Заказ создан через API: ${orderDto.id}")
+                    Result.success(orderDto.id)
                 } else {
-                    Log.w("OrderRepository", "Пустой ответ API при создании заказа, используем mock")
-                    mockOrderRepository.createOrder(userId, cartItems, deliveryAddress, customerPhone, customerName, notes, paymentMethod, deliveryMethod)
+                    Log.w("OrderRepository", "Пустой ответ API при создании заказа")
+                    Result.failure(Exception("Empty API response"))
                 }
             } else {
-                Log.w("OrderRepository", "Ошибка API при создании заказа: ${apiResult.getErrorMessage()}, используем mock")
-                mockOrderRepository.createOrder(userId, cartItems, deliveryAddress, customerPhone, customerName, notes, paymentMethod, deliveryMethod)
+                Log.w("OrderRepository", "Ошибка API при создании заказа: ${apiResult.getErrorMessage()}")
+                Result.failure(Exception("API Error: ${apiResult.getErrorMessage()}"))
             }
         } catch (e: Exception) {
             Log.e("OrderRepository", "Исключение при создании заказа: ${e.message}")
-            mockOrderRepository.createOrder(userId, cartItems, deliveryAddress, customerPhone, customerName, notes, paymentMethod, deliveryMethod)
+            Result.failure(e)
         }
     }
 
@@ -232,12 +214,12 @@ class OrderRepositoryImpl @Inject constructor(
                 Log.d("OrderRepository", "Статус заказа обновлен через API: $orderId -> $status")
                 Result.success(Unit)
             } else {
-                Log.w("OrderRepository", "Ошибка API при обновлении статуса: ${apiResult.getErrorMessage()}, используем mock")
-                mockOrderRepository.updateOrderStatus(orderId, status)
+                Log.w("OrderRepository", "Ошибка API при обновлении статуса: ${apiResult.getErrorMessage()}")
+                Result.failure(Exception("API Error: ${apiResult.getErrorMessage()}"))
             }
         } catch (e: Exception) {
             Log.e("OrderRepository", "Исключение при обновлении статуса: ${e.message}")
-            mockOrderRepository.updateOrderStatus(orderId, status)
+            Result.failure(e)
         }
     }
 
@@ -248,11 +230,11 @@ class OrderRepositoryImpl @Inject constructor(
                 val count = ordersResult.getOrNull()?.size ?: 0
                 Result.success(count)
             } else {
-                mockOrderRepository.getUserOrdersCount(userId)
+                Result.failure(Exception("Failed to get orders"))
             }
         } catch (e: Exception) {
             Log.e("OrderRepository", "Исключение при подсчете заказов: ${e.message}")
-            mockOrderRepository.getUserOrdersCount(userId)
+            Result.failure(e)
         }
     }
 
@@ -265,19 +247,19 @@ class OrderRepositoryImpl @Inject constructor(
             if (apiResult.isSuccess) {
                 val adminOrdersPageResponse = apiResult.getOrNull()
                 if (adminOrdersPageResponse != null) {
-                    val orders = adminOrdersPageResponse.toDomainOrders()
+                    val orders = adminOrdersPageResponse.toDomain()
                     Log.d("OrderRepository", "Заказы по статусу $status загружены с API: ${orders.size}")
                     Result.success(orders)
                 } else {
-                    mockOrderRepository.getOrdersByStatus(status)
+                    Result.success(emptyList())
                 }
             } else {
-                Log.w("OrderRepository", "Ошибка API заказов по статусу, используем mock данные")
-                mockOrderRepository.getOrdersByStatus(status)
+                Log.w("OrderRepository", "Ошибка API заказов по статусу")
+                Result.failure(Exception("API Error: ${apiResult.getErrorMessage()}"))
             }
         } catch (e: Exception) {
             Log.e("OrderRepository", "Исключение при получении заказов по статусу: ${e.message}")
-            mockOrderRepository.getOrdersByStatus(status)
+            Result.failure(e)
         }
     }
 
@@ -289,12 +271,12 @@ class OrderRepositoryImpl @Inject constructor(
                 Log.d("OrderRepository", "Заказ отменен через API: $orderId")
                 Result.success(Unit)
             } else {
-                Log.w("OrderRepository", "Ошибка API при отмене заказа: ${apiResult.getErrorMessage()}, используем mock")
-                mockOrderRepository.deleteOrder(orderId)
+                Log.w("OrderRepository", "Ошибка API при отмене заказа: ${apiResult.getErrorMessage()}")
+                Result.failure(Exception("API Error: ${apiResult.getErrorMessage()}"))
             }
         } catch (e: Exception) {
             Log.e("OrderRepository", "Исключение при отмене заказа: ${e.message}")
-            mockOrderRepository.deleteOrder(orderId)
+            Result.failure(e)
         }
     }
 } 

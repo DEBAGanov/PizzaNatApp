@@ -39,10 +39,10 @@ class CategoryProductsViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val categoryId: Long = savedStateHandle.get<Long>("categoryId") ?: 0L
+    private val initialCategoryId: Long = savedStateHandle.get<Long>("categoryId") ?: 0L
 
     private val _uiState = MutableStateFlow(
-        CategoryProductsUiState(categoryId = categoryId)
+        CategoryProductsUiState(categoryId = initialCategoryId)
     )
     val uiState: StateFlow<CategoryProductsUiState> = _uiState.asStateFlow()
 
@@ -51,11 +51,26 @@ class CategoryProductsViewModel @Inject constructor(
     }
 
     init {
-        loadProducts()
+        // Загружаем продукты только если есть корректный ID
+        if (initialCategoryId > 0) {
+            loadProducts()
+        }
     }
 
     fun loadProducts() {
         viewModelScope.launch {
+            val currentCategoryId = _uiState.value.categoryId
+            android.util.Log.d("CategoryProductsVM", "Начинаем загрузку продуктов для категории: $currentCategoryId")
+            
+            if (currentCategoryId <= 0) {
+                android.util.Log.w("CategoryProductsVM", "Некорректный categoryId: $currentCategoryId")
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = "Некорректный ID категории"
+                )
+                return@launch
+            }
+            
             _uiState.value = _uiState.value.copy(
                 isLoading = true,
                 error = null,
@@ -63,9 +78,16 @@ class CategoryProductsViewModel @Inject constructor(
             )
 
             try {
-                val result = getProductsByCategoryUseCase(categoryId, 0, PAGE_SIZE)
+                val result = getProductsByCategoryUseCase(currentCategoryId, 0, PAGE_SIZE)
+                android.util.Log.d("CategoryProductsVM", "Результат загрузки: isSuccess=${result.isSuccess}")
+                
                 if (result.isSuccess) {
                     val products = result.getOrNull() ?: emptyList()
+                    android.util.Log.d("CategoryProductsVM", "Загружено продуктов: ${products.size}")
+                    products.forEach { product ->
+                        android.util.Log.d("CategoryProductsVM", "Продукт: ${product.name} (ID: ${product.id})")
+                    }
+                    
                     _uiState.value = _uiState.value.copy(
                         products = products,
                         isLoading = false,
@@ -75,12 +97,14 @@ class CategoryProductsViewModel @Inject constructor(
                     )
                 } else {
                     val error = result.exceptionOrNull()?.message ?: "Неизвестная ошибка"
+                    android.util.Log.e("CategoryProductsVM", "Ошибка загрузки: $error", result.exceptionOrNull())
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         error = error
                     )
                 }
             } catch (e: Exception) {
+                android.util.Log.e("CategoryProductsVM", "Exception при загрузке: ${e.message}", e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = e.message ?: "Произошла ошибка при загрузке продуктов"
@@ -101,7 +125,7 @@ class CategoryProductsViewModel @Inject constructor(
 
             try {
                 val nextPage = currentState.currentPage + 1
-                val result = getProductsByCategoryUseCase(categoryId, nextPage, PAGE_SIZE)
+                val result = getProductsByCategoryUseCase(currentState.categoryId, nextPage, PAGE_SIZE)
                 if (result.isSuccess) {
                     val newProducts = result.getOrNull() ?: emptyList()
                     _uiState.value = _uiState.value.copy(
@@ -128,13 +152,14 @@ class CategoryProductsViewModel @Inject constructor(
 
     fun refresh() {
         viewModelScope.launch {
+            val currentCategoryId = _uiState.value.categoryId
             _uiState.value = _uiState.value.copy(
                 isRefreshing = true,
                 error = null
             )
 
             try {
-                val result = getProductsByCategoryUseCase(categoryId, 0, PAGE_SIZE)
+                val result = getProductsByCategoryUseCase(currentCategoryId, 0, PAGE_SIZE)
                 if (result.isSuccess) {
                     val products = result.getOrNull() ?: emptyList()
                     _uiState.value = _uiState.value.copy(
@@ -166,6 +191,15 @@ class CategoryProductsViewModel @Inject constructor(
 
     fun setCategoryName(name: String) {
         _uiState.value = _uiState.value.copy(categoryName = name)
+    }
+    
+    fun setCategoryId(id: Long) {
+        android.util.Log.d("CategoryProductsVM", "Установка нового categoryId: $id (было: ${_uiState.value.categoryId})")
+        if (id != _uiState.value.categoryId && id > 0) {
+            _uiState.value = _uiState.value.copy(categoryId = id)
+            // Перезагружаем продукты с новым ID
+            loadProducts()
+        }
     }
 
     fun addToCart(product: Product) {

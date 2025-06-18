@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -157,15 +158,16 @@ fun LoginScreen(
         
         Spacer(modifier = Modifier.height(24.dp))
         
-        // Email поле
+        // Email или Username поле
         OutlinedTextField(
-            value = uiState.email,
-            onValueChange = viewModel::onEmailChanged,
-            label = { Text("Email") },
+            value = uiState.usernameOrEmail,
+            onValueChange = viewModel::onUsernameOrEmailChanged,
+            label = { Text("Email или логин") },
+            placeholder = { Text("Введите email или имя пользователя") },
             leadingIcon = {
                 Icon(
-                    imageVector = Icons.Default.Email,
-                    contentDescription = "Email"
+                    imageVector = Icons.Default.Person,
+                    contentDescription = "Email или логин"
                 )
             },
             keyboardOptions = KeyboardOptions(
@@ -175,8 +177,8 @@ fun LoginScreen(
             keyboardActions = KeyboardActions(
                 onNext = { focusManager.moveFocus(FocusDirection.Down) }
             ),
-            isError = uiState.emailError != null,
-            supportingText = uiState.emailError?.let { { Text(it) } },
+            isError = uiState.usernameOrEmailError != null,
+            supportingText = uiState.usernameOrEmailError?.let { { Text(it) } },
             modifier = Modifier.fillMaxWidth()
         )
         

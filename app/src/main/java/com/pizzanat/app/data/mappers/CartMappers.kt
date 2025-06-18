@@ -8,6 +8,8 @@ package com.pizzanat.app.data.mappers
 
 import com.pizzanat.app.data.local.entities.CartItemEntity
 import com.pizzanat.app.data.local.entities.OrderItemEntity
+import com.pizzanat.app.data.remote.dto.CartDto
+import com.pizzanat.app.data.remote.dto.CartItemDto
 import com.pizzanat.app.domain.entities.CartItem
 import com.pizzanat.app.domain.entities.Product
 
@@ -78,4 +80,35 @@ fun CartItem.toProduct(): Product {
         categoryId = 0L, // Категория не хранится в корзине
         available = true
     )
+}
+
+// API DTO Mappers
+
+/**
+ * Преобразование CartItemDto в CartItem (Domain)
+ */
+fun CartItemDto.toDomain(): CartItem {
+    return CartItem(
+        id = this.id,
+        productId = this.productId,
+        productName = this.productName,
+        productPrice = this.discountedPrice ?: this.price,
+        productImageUrl = this.productImageUrl ?: "",
+        quantity = this.quantity,
+        selectedOptions = emptyMap() // API не возвращает опции
+    )
+}
+
+/**
+ * Преобразование CartDto в список CartItem (Domain)
+ */
+fun CartDto.toDomain(): List<CartItem> {
+    return this.items.map { it.toDomain() }
+}
+
+/**
+ * Получение общей суммы корзины из CartDto
+ */
+fun CartDto.getTotalAmount(): Double {
+    return this.totalAmount
 } 

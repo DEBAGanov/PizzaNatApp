@@ -6,8 +6,9 @@
  */
 package com.pizzanat.app.data.mappers
 
-import com.pizzanat.app.data.network.dto.CategoryDto
-import com.pizzanat.app.data.network.dto.ProductDto
+import com.pizzanat.app.data.remote.dto.CategoryDto
+import com.pizzanat.app.data.remote.dto.ProductDto
+import com.pizzanat.app.data.remote.dto.ProductsPageResponse
 import com.pizzanat.app.domain.entities.Category
 import com.pizzanat.app.domain.entities.Product
 
@@ -18,8 +19,8 @@ fun CategoryDto.toDomain(): Category {
     return Category(
         id = this.id,
         name = this.name,
-        description = this.description ?: "",
-        imageUrl = this.imageUrl ?: ""
+        description = this.description,
+        imageUrl = this.imageUrl
     )
 }
 
@@ -30,10 +31,35 @@ fun ProductDto.toDomain(): Product {
     return Product(
         id = this.id,
         name = this.name,
-        description = this.description ?: "",
+        description = this.description,
         price = this.price,
-        imageUrl = this.imageUrl ?: "",
+        discountedPrice = this.discountedPrice,
         categoryId = this.categoryId,
-        available = this.available
+        imageUrl = this.imageUrl,
+        available = this.available,
+        specialOffer = this.specialOffer,
+        discountPercent = this.discountPercent,
+        weight = this.weight
     )
+}
+
+/**
+ * Преобразование списка CategoryDto в список Category
+ */
+fun List<CategoryDto>.toCategoryDomain(): List<Category> {
+    return this.map { it.toDomain() }
+}
+
+/**
+ * Преобразование списка ProductDto в список Product
+ */
+fun List<ProductDto>.toProductDomain(): List<Product> {
+    return this.map { it.toDomain() }
+}
+
+/**
+ * Преобразование ProductsPageResponse в список Product
+ */
+fun ProductsPageResponse.toProductsDomain(): List<Product> {
+    return this.content.map { it.toDomain() }
 } 

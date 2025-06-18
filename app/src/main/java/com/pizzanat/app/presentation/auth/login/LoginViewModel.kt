@@ -1,8 +1,9 @@
 /**
  * @file: LoginViewModel.kt
- * @description: ViewModel для экрана входа с управлением состоянием и бизнес-логикой
+ * @description: ViewModel для экрана входа с поддержкой email и username
  * @dependencies: Hilt, ViewModel, Use Cases, Coroutines
  * @created: 2024-12-19
+ * @updated: 2024-12-20 - Добавлена поддержка авторизации по email и username
  */
 package com.pizzanat.app.presentation.auth.login
 
@@ -17,9 +18,9 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class LoginUiState(
-    val email: String = "",
+    val usernameOrEmail: String = "",
     val password: String = "",
-    val emailError: String? = null,
+    val usernameOrEmailError: String? = null,
     val passwordError: String? = null,
     val generalError: String? = null,
     val isLoading: Boolean = false,
@@ -34,10 +35,10 @@ class LoginViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
     
-    fun onEmailChanged(email: String) {
+    fun onUsernameOrEmailChanged(usernameOrEmail: String) {
         _uiState.value = _uiState.value.copy(
-            email = email,
-            emailError = null,
+            usernameOrEmail = usernameOrEmail,
+            usernameOrEmailError = null,
             generalError = null
         )
     }
@@ -54,25 +55,25 @@ class LoginViewModel @Inject constructor(
         val currentState = _uiState.value
         
         // Валидация формы
-        val emailError = validateEmail(currentState.email)
+        val usernameOrEmailError = validateUsernameOrEmail(currentState.usernameOrEmail)
         val passwordError = validatePassword(currentState.password)
         
-        if (emailError != null || passwordError != null) {
+        if (usernameOrEmailError != null || passwordError != null) {
             _uiState.value = currentState.copy(
-                emailError = emailError,
+                usernameOrEmailError = usernameOrEmailError,
                 passwordError = passwordError
             )
             return
         }
         
         // Выполнение входа
-        performLogin(currentState.email, currentState.password)
+        performLogin(currentState.usernameOrEmail, currentState.password)
     }
     
-    private fun validateEmail(email: String): String? {
+    private fun validateUsernameOrEmail(usernameOrEmail: String): String? {
         return when {
-            email.isBlank() -> "Email не может быть пустым"
-            !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() -> "Неверный формат email"
+            usernameOrEmail.isBlank() -> "Email или имя пользователя не может быть пустым"
+            usernameOrEmail.length < 3 -> "Минимум 3 символа"
             else -> null
         }
     }
@@ -85,7 +86,7 @@ class LoginViewModel @Inject constructor(
         }
     }
     
-    private fun performLogin(username: String, password: String) {
+    private fun performLogin(usernameOrEmail: String, password: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
                 isLoading = true,
@@ -93,7 +94,7 @@ class LoginViewModel @Inject constructor(
             )
             
             try {
-                val result = loginUseCase(username, password)
+                val result = loginUseCase(usernameOrEmail, password)
                 
                 if (result.isSuccess) {
                     _uiState.value = _uiState.value.copy(
@@ -104,15 +105,27 @@ class LoginViewModel @Inject constructor(
                     val error = result.exceptionOrNull()?.message ?: "Неизвестная ошибка"
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        generalError = error
+                        generalError = getLocalizedError(error)
                     )
                 }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    generalError = e.message ?: "Произошла ошибка"
+                    generalError = getLocalizedError(e.message ?: "Произошла ошибка")
                 )
             }
+        }
+    }
+    
+    private fun getLocalizedError(error: String): String {
+        return when {
+            error.contains("401") || error.contains("Неверное имя пользователя или пароль") -> 
+                "Неверный email/логин или пароль.\nПопробуйте ввести логин вместо email или наоборот."
+            error.contains("Network") || error.contains("timeout") -> 
+                "Проблема с подключением к интернету"
+            error.contains("Server") || error.contains("500") -> 
+                "Проблема на сервере, попробуйте позже"
+            else -> error
         }
     }
 } 
