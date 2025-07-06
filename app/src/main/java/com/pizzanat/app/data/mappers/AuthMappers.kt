@@ -72,7 +72,8 @@ fun TelegramAuthResponseDto.toDomain(): TelegramAuthInitResponse {
         success = this.success,
         authToken = this.authToken,
         telegramBotUrl = this.telegramBotUrl,
-        expiresAt = this.expiresAt
+        expiresAt = this.expiresAt,
+        message = this.message
     )
 }
 
@@ -92,10 +93,17 @@ private fun String.toTelegramAuthStatus(): TelegramAuthStatus {
  * Преобразование TelegramAuthStatusDto в TelegramAuthStatusResponse
  */
 fun TelegramAuthStatusDto.toDomain(): TelegramAuthStatusResponse {
-    val authResponse = if (this.token != null && this.user != null) {
+    val authResponse = if (this.authData != null) {
         AuthResponse(
-            token = this.token,
-            user = this.user.toDomain()
+            token = this.authData.token,
+            user = User(
+                id = this.authData.userId,
+                username = this.authData.username,
+                email = this.authData.email ?: "",
+                firstName = this.authData.firstName ?: "",
+                lastName = this.authData.lastName ?: "",
+                phone = "" // Telegram авторизация не предоставляет номер телефона
+            )
         )
     } else null
     
@@ -116,7 +124,8 @@ fun SmsAuthResponseDto.toDomain(): SmsAuthResponse {
         success = this.success,
         message = this.message,
         expiresAt = this.expiresAt,
-        codeLength = this.codeLength
+        codeLength = this.codeLength,
+        maskedPhoneNumber = this.maskedPhoneNumber
     )
 }
 
@@ -124,17 +133,22 @@ fun SmsAuthResponseDto.toDomain(): SmsAuthResponse {
  * Преобразование SmsCodeVerifyResponseDto в SmsCodeVerifyResponse
  */
 fun SmsCodeVerifyResponseDto.toDomain(): SmsCodeVerifyResponse {
-    val authResponse = if (this.token != null && this.user != null) {
-        AuthResponse(
-            token = this.token,
-            user = this.user.toDomain()
+    val authResponse = AuthResponse(
+        token = this.token,
+        user = User(
+            id = this.userId,
+            username = this.username,
+            email = this.email ?: "",
+            firstName = this.firstName ?: "",
+            lastName = this.lastName ?: "",
+            phone = this.username // Backend возвращает номер телефона в username
         )
-    } else null
+    )
     
     return SmsCodeVerifyResponse(
-        success = this.success,
+        success = true, // Если получили ответ с токеном - значит успешно
         authResponse = authResponse,
-        error = this.error,
-        message = this.message
+        error = null,
+        message = "Авторизация успешна"
     )
 } 

@@ -11,11 +11,56 @@ import java.time.LocalDateTime
 /**
  * Способы оплаты
  */
-enum class PaymentMethod(val displayName: String) {
-    CASH("Наличными"),
-    CARD_ON_DELIVERY("Картой при получении"),
-    ONLINE_CARD("Банковской картой онлайн")
+enum class PaymentMethod(val displayName: String, val yookassaMethod: String? = null) {
+    CARD_ON_DELIVERY("Картой/наличными при получении"),
+    SBP("СБП", "sbp")
 }
+
+/**
+ * Статусы платежа
+ */
+enum class PaymentStatus(val displayName: String) {
+    PENDING("Ожидает оплаты"),
+    PROCESSING("Обрабатывается"),
+    SUCCEEDED("Оплачен"),
+    FAILED("Ошибка оплаты"),
+    CANCELLED("Отменен"),
+    REFUNDED("Возвращен")
+}
+
+/**
+ * Информация о платеже
+ */
+data class PaymentInfo(
+    val id: String = "",
+    val orderId: Long = 0,
+    val amount: Double = 0.0,
+    val currency: String = "RUB",
+    val method: PaymentMethod,
+    val status: PaymentStatus = PaymentStatus.PENDING,
+    val paymentToken: String? = null,
+    val confirmationUrl: String? = null,
+    val createdAt: String = "",
+    val description: String = "",
+    val metadata: Map<String, String> = emptyMap(),
+    val returnUrl: String? = null,
+    val customerEmail: String? = null,
+    val customerPhone: String? = null
+)
+
+/**
+ * Данные для создания платежа
+ */
+data class CreatePaymentRequest(
+    val amount: Double,
+    val currency: String = "RUB",
+    val orderId: Long,
+    val paymentMethod: PaymentMethod,
+    val description: String,
+    val customerEmail: String? = null,
+    val customerPhone: String? = null,
+    val returnUrl: String? = null
+)
 
 /**
  * Способы доставки
@@ -86,10 +131,3 @@ fun OrderStatus.getDisplayName(): String {
     }
 } 
 
-/**
- * Оценка доставки
- */
-data class DeliveryEstimate(
-    val estimatedTime: Int, // в минутах
-    val deliveryCost: Double
-) 

@@ -194,12 +194,7 @@ fun CategoryProductsScreen(
                         LazyVerticalGrid(
                             columns = GridCells.Fixed(2),
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(
-                                start = 16.dp,
-                                end = 16.dp,
-                                top = 16.dp,
-                                bottom = 80.dp // Дополнительное место для floating кнопки
-                            ),
+                                                contentPadding = PaddingValues(16.dp),
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
@@ -244,9 +239,7 @@ fun CategoryProductsScreen(
         // Floating кнопка корзины
         FloatingCartButton(
             onNavigateToCart = onNavigateToCart,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 16.dp)
+            modifier = Modifier.align(Alignment.BottomCenter)
         )
     }
 }

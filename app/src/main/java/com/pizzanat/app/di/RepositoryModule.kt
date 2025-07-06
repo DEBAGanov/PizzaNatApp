@@ -14,6 +14,7 @@ import com.pizzanat.app.data.local.dao.CartDao
 import com.pizzanat.app.data.local.dao.NotificationDao
 import com.pizzanat.app.data.network.api.AuthApiService
 import com.pizzanat.app.data.remote.api.CartApiService
+import com.pizzanat.app.data.remote.api.AddressApiService
 import com.pizzanat.app.data.remote.api.NotificationApiService
 import com.pizzanat.app.data.repositories.*
 import com.pizzanat.app.domain.repositories.*
@@ -87,5 +88,21 @@ object RepositoryModule {
             MockNotificationRepositoryImpl(notificationDao, dataStore)
             // NotificationRepositoryImpl(notificationApiService, notificationDao, dataStore)
         }
+    }
+
+    @Provides
+    @Singleton
+    fun provideAddressRepository(
+        addressApiService: AddressApiService
+    ): AddressRepository {
+        return AddressRepositoryImpl(addressApiService)
+    }
+
+    @Provides
+    @Singleton
+    fun providePaymentRepository(
+        paymentApiService: com.pizzanat.app.data.remote.api.PaymentApiService
+    ): PaymentRepository {
+        return com.pizzanat.app.data.repositories.PaymentRepositoryImpl(paymentApiService)
     }
 } 

@@ -35,7 +35,20 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pizzanat.app.presentation.theme.PizzaNatTheme
 import com.pizzanat.app.presentation.theme.CategoryPlateYellow
+import com.pizzanat.app.utils.SmsRetrieverHelper
 import kotlinx.coroutines.delay
+import android.util.Log
+import androidx.compose.ui.platform.LocalContext
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.text
+import android.app.NotificationManager
+import android.service.notification.StatusBarNotification
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,11 +60,66 @@ fun SmsCodeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val focusRequester = remember { FocusRequester() }
+    val context = LocalContext.current
+    
+    // SMS Retriever Helper
+    val smsRetrieverHelper = remember {
+        SmsRetrieverHelper(context) { smsCode ->
+            Log.d("SmsCodeScreen", "📱 Получен SMS код: $smsCode")
+            viewModel.onSmsCodeAutoFilled(smsCode)
+        }
+    }
     
     // Устанавливаем номер телефона в ViewModel
     LaunchedEffect(phoneNumber) {
         if (phoneNumber.isNotBlank()) {
             viewModel.setPhoneNumber(phoneNumber)
+        }
+    }
+    
+    // Запуск SMS Retriever при открытии экрана
+    LaunchedEffect(Unit) {
+        Log.d("SmsCodeScreen", "🚀 Запуск SMS Retriever для автоматического заполнения кода")
+        smsRetrieverHelper.startSmsRetriever()
+        
+        // Альтернативный метод - проверка уведомлений
+        try {
+            Log.d("SmsCodeScreen", "🔔 Проверка уведомлений на наличие SMS кодов...")
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                val activeNotifications = notificationManager.activeNotifications
+                Log.d("SmsCodeScreen", "📱 Найдено уведомлений: ${activeNotifications.size}")
+                
+                for (notification in activeNotifications) {
+                    val title = notification.notification.extras?.getString("android.title") ?: ""
+                    val text = notification.notification.extras?.getString("android.text") ?: ""
+                    val bigText = notification.notification.extras?.getString("android.bigText") ?: ""
+                    
+                    val fullText = "$title $text $bigText"
+                    Log.d("SmsCodeScreen", "🔍 Проверка уведомления: $fullText")
+                    
+                    // Ищем 4-значный код в уведомлении
+                    val codePattern = "\\b\\d{4}\\b".toRegex()
+                    val foundCode = codePattern.find(fullText)?.value
+                    
+                    if (foundCode != null && uiState.smsCode.isEmpty()) {
+                        Log.d("SmsCodeScreen", "🎉 Найден SMS код в уведомлении: $foundCode")
+                        viewModel.onSmsCodeAutoFilled(foundCode)
+                        break
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w("SmsCodeScreen", "⚠️ Ошибка проверки уведомлений", e)
+        }
+    }
+    
+    // Остановка SMS Retriever при закрытии экрана
+    DisposableEffect(Unit) {
+        onDispose {
+            Log.d("SmsCodeScreen", "🛑 Остановка SMS Retriever")
+            smsRetrieverHelper.stopSmsRetriever()
         }
     }
     
@@ -63,7 +131,9 @@ fun SmsCodeScreen(
     
     // Обработка успешной аутентификации
     LaunchedEffect(uiState.isAuthSuccessful) {
+        Log.d("SmsCodeScreen", "🔄 isAuthSuccessful состояние изменилось: ${uiState.isAuthSuccessful}")
         if (uiState.isAuthSuccessful) {
+            Log.d("SmsCodeScreen", "🎉 Авторизация успешна! Вызываем onAuthSuccess()")
             onAuthSuccess()
         }
     }
@@ -225,6 +295,28 @@ private fun SmsCodeTextField(
     isError: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val clipboardManager = remember { context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager }
+    
+    // Проверка буфера обмена на SMS код при создании
+    LaunchedEffect(Unit) {
+        try {
+            val clipData = clipboardManager.primaryClip
+            if (clipData != null && clipData.itemCount > 0) {
+                val clipText = clipData.getItemAt(0).text?.toString() ?: ""
+                val smsCodePattern = "\\b\\d{4}\\b".toRegex()
+                val foundCode = smsCodePattern.find(clipText)?.value
+                
+                if (foundCode != null && value.isEmpty()) {
+                    Log.d("SmsCodeTextField", "📋 Найден код в буфере обмена: $foundCode")
+                    onValueChange(foundCode)
+                }
+            }
+        } catch (e: Exception) {
+            Log.w("SmsCodeTextField", "Ошибка проверки буфера обмена", e)
+        }
+    }
+    
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
@@ -252,7 +344,7 @@ private fun SmsCodeTextField(
                     contentAlignment = Alignment.Center
                 ) {
                     if (index == 0) {
-                        // Скрытое поле ввода для получения фокуса
+                        // Скрытое поле ввода для получения фокуса и автозаполнения
                         BasicTextField(
                             value = value,
                             onValueChange = { newValue ->
@@ -261,9 +353,18 @@ private fun SmsCodeTextField(
                                 onValueChange(filtered)
                             },
                             keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Number
+                                keyboardType = KeyboardType.Number,
+                                imeAction = ImeAction.Done,
+                                autoCorrect = false
                             ),
-                            modifier = Modifier.size(1.dp)
+                            singleLine = true,
+                            modifier = Modifier
+                                .size(1.dp)
+                                .semantics {
+                                    contentDescription = "SMS verification code"
+                                    // Подсказка для автозаполнения
+                                    text = AnnotatedString("SMS code")
+                                }
                         )
                     }
                     

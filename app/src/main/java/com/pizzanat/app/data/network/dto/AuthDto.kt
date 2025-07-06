@@ -27,11 +27,13 @@ data class AuthResponseDto(
 
 data class ErrorResponseDto(
     @SerializedName("status")
-    val status: Int,
+    val status: Int? = null,
     @SerializedName("message")
-    val message: String,
+    val message: String? = null,
     @SerializedName("timestamp")
-    val timestamp: Long
+    val timestamp: Long? = null,
+    @SerializedName("error")
+    val error: String? = null
 )
 
 data class UserDto(
@@ -85,7 +87,9 @@ data class TelegramAuthResponseDto(
     @SerializedName("telegramBotUrl")
     val telegramBotUrl: String,
     @SerializedName("expiresAt")
-    val expiresAt: String
+    val expiresAt: String,
+    @SerializedName("message")
+    val message: String? = null
 )
 
 data class TelegramAuthStatusDto(
@@ -95,10 +99,23 @@ data class TelegramAuthStatusDto(
     val status: String, // PENDING, CONFIRMED, EXPIRED
     @SerializedName("message")
     val message: String?,
+    @SerializedName("authData")
+    val authData: TelegramAuthDataDto?
+)
+
+data class TelegramAuthDataDto(
     @SerializedName("token")
-    val token: String?,
-    @SerializedName("user")
-    val user: UserDto?
+    val token: String,
+    @SerializedName("userId")
+    val userId: Long,
+    @SerializedName("username")
+    val username: String,
+    @SerializedName("email")
+    val email: String?,
+    @SerializedName("firstName")
+    val firstName: String?,
+    @SerializedName("lastName")
+    val lastName: String?
 )
 
 // SMS Auth DTOs
@@ -115,7 +132,9 @@ data class SmsAuthResponseDto(
     @SerializedName("expiresAt")
     val expiresAt: String,
     @SerializedName("codeLength")
-    val codeLength: Int
+    val codeLength: Int,
+    @SerializedName("maskedPhoneNumber")
+    val maskedPhoneNumber: String? = null
 )
 
 data class SmsCodeVerifyRequestDto(
@@ -126,14 +145,16 @@ data class SmsCodeVerifyRequestDto(
 )
 
 data class SmsCodeVerifyResponseDto(
-    @SerializedName("success")
-    val success: Boolean,
     @SerializedName("token")
-    val token: String?,
-    @SerializedName("user")
-    val user: UserDto?,
-    @SerializedName("error")
-    val error: String?,
-    @SerializedName("message")
-    val message: String?
+    val token: String,
+    @SerializedName("userId")
+    val userId: Long,
+    @SerializedName("username")
+    val username: String,
+    @SerializedName("email")
+    val email: String?,
+    @SerializedName("firstName")
+    val firstName: String?,
+    @SerializedName("lastName")
+    val lastName: String?
 ) 

@@ -168,6 +168,11 @@ fun TelegramAuthScreen(
                 uiState.isLoading -> {
                     LoadingContent()
                 }
+                uiState.isWaitingForAuth -> {
+                    WaitingForAuthContent(
+                        onRefresh = viewModel::checkAuthStatus
+                    )
+                }
                 uiState.telegramAuthUrl != null -> {
                     TelegramAuthContent(
                         authUrl = uiState.telegramAuthUrl!!,
@@ -176,7 +181,9 @@ fun TelegramAuthScreen(
                     )
                 }
                 else -> {
-                    InitialContent(onStartAuth = viewModel::startTelegramAuth)
+                    InitialContent(
+                        onStartAuth = { viewModel.startTelegramAuthAndOpen(openTelegram) }
+                    )
                 }
             }
             
@@ -323,11 +330,103 @@ private fun InitialContent(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "Войти через Telegram",
+                text = "Открыть Telegram",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
         }
+    }
+}
+
+@Composable
+private fun WaitingForAuthContent(
+    onRefresh: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Анимированная иконка ожидания
+        Card(
+            modifier = Modifier.size(96.dp),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color(0xFF0088CC) // Telegram blue
+            )
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(48.dp),
+                    color = Color.White,
+                    strokeWidth = 4.dp
+                )
+            }
+        }
+        
+        Text(
+            text = "Ожидание авторизации",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+        
+        Text(
+            text = "Подтвердите авторизацию в Telegram и вернитесь в приложение",
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+        )
+        
+        // Информация о процессе
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Что происходит:",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                StepItem("✅ Telegram открыт", true)
+                StepItem("⏳ Ожидание подтверждения", false)
+                StepItem("🔄 Автоматическая проверка", false)
+            }
+        }
+        
+        OutlinedButton(
+            onClick = onRefresh,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Проверить статус")
+        }
+    }
+}
+
+@Composable
+private fun StepItem(text: String, isCompleted: Boolean) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (isCompleted) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            }
+        )
     }
 }
 

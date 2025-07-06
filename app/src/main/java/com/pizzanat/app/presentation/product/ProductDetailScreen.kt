@@ -102,9 +102,7 @@ fun ProductDetailScreen(
         if (uiState.product != null) {
             FloatingCartButton(
                 onNavigateToCart = onNavigateToCart,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 16.dp)
+                modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
     }

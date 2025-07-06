@@ -22,7 +22,7 @@ class CreateOrderUseCase @Inject constructor(
         customerPhone: String,
         customerName: String,
         notes: String = "",
-        paymentMethod: PaymentMethod = PaymentMethod.CASH,
+        paymentMethod: PaymentMethod = PaymentMethod.CARD_ON_DELIVERY,
         deliveryMethod: DeliveryMethod = DeliveryMethod.DELIVERY
     ): Result<Long> {
         return try {

@@ -1,13 +1,15 @@
 /**
  * @file: PhoneAuthViewModel.kt
  * @description: ViewModel для аутентификации через номер телефона
- * @dependencies: Hilt, ViewModel, StateFlow
+ * @dependencies: Hilt, ViewModel, StateFlow, SMS Use Cases
  * @created: 2024-12-20
+ * @updated: 2025-01-23 - Добавлена реальная интеграция с API
  */
 package com.pizzanat.app.presentation.auth.phone
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pizzanat.app.domain.usecases.auth.SendSmsCodeUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,7 +28,7 @@ data class PhoneAuthUiState(
 
 @HiltViewModel
 class PhoneAuthViewModel @Inject constructor(
-    // TODO: Inject PhoneAuthUseCase when backend is ready
+    private val sendSmsCodeUseCase: SendSmsCodeUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PhoneAuthUiState())
@@ -63,17 +65,22 @@ class PhoneAuthViewModel @Inject constructor(
             )
 
             try {
-                // TODO: Implement actual SMS sending when backend is ready
-                // val result = sendSmsCodeUseCase(phoneNumber)
+                val result = sendSmsCodeUseCase(phoneNumber)
                 
-                // Симуляция отправки SMS (удалить когда будет готов backend)
-                kotlinx.coroutines.delay(2000)
-                
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    isSmsSent = true,
-                    error = null
-                )
+                if (result.isSuccess) {
+                    val response = result.getOrThrow()
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        isSmsSent = true,
+                        error = null
+                    )
+                } else {
+                    val exception = result.exceptionOrNull()
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = exception?.message ?: "Ошибка отправки SMS"
+                    )
+                }
                 
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(

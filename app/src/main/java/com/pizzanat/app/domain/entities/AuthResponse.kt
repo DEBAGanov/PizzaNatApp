@@ -17,7 +17,8 @@ data class TelegramAuthInitResponse(
     val success: Boolean,
     val authToken: String,
     val telegramBotUrl: String,
-    val expiresAt: String
+    val expiresAt: String,
+    val message: String? = null
 )
 
 enum class TelegramAuthStatus {
@@ -38,7 +39,8 @@ data class SmsAuthResponse(
     val success: Boolean,
     val message: String,
     val expiresAt: String,
-    val codeLength: Int
+    val codeLength: Int,
+    val maskedPhoneNumber: String? = null
 )
 
 data class SmsCodeVerifyResponse(

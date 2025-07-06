@@ -351,7 +351,9 @@ private fun CartContent(
         
         // Итого и кнопка оформления как в Fox Whiskers
         Card(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.navigationBars),
             shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
             colors = CardDefaults.cardColors(
                 containerColor = Color.White

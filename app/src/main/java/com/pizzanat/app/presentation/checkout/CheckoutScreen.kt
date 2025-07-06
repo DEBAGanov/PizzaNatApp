@@ -39,6 +39,8 @@ import com.pizzanat.app.presentation.theme.CategoryPlateYellow
 import java.text.NumberFormat
 import java.util.*
 import com.pizzanat.app.presentation.components.PhoneTextField
+import com.pizzanat.app.presentation.components.ZonalAddressTextField
+import com.pizzanat.app.domain.entities.SimpleAddressSuggestion
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -84,6 +86,8 @@ fun CheckoutScreen(
                         }
                     },
                     onClearError = viewModel::clearError,
+                    onGetAddressSuggestions = viewModel::getAddressSuggestions,
+                    onSelectAddressSuggestion = viewModel::selectAddressSuggestion,
                     focusManager = focusManager
                 )
             }
@@ -222,6 +226,8 @@ private fun CheckoutContent(
     onUpdateNotes: (String) -> Unit,
     onProceedToPayment: () -> Unit,
     onClearError: () -> Unit,
+    onGetAddressSuggestions: (String) -> Unit,
+    onSelectAddressSuggestion: (SimpleAddressSuggestion) -> Unit,
     focusManager: androidx.compose.ui.focus.FocusManager
 ) {
     val scrollState = rememberScrollState()
@@ -230,6 +236,7 @@ private fun CheckoutContent(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
+            .windowInsetsPadding(WindowInsets.navigationBars)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -283,6 +290,8 @@ private fun CheckoutContent(
             onUpdatePhone = onUpdatePhone,
             onUpdateName = onUpdateName,
             onUpdateNotes = onUpdateNotes,
+            onGetAddressSuggestions = onGetAddressSuggestions,
+            onSelectAddressSuggestion = onSelectAddressSuggestion,
             focusManager = focusManager
         )
 
@@ -408,6 +417,8 @@ private fun DeliveryInfoCard(
     onUpdatePhone: (String) -> Unit,
     onUpdateName: (String) -> Unit,
     onUpdateNotes: (String) -> Unit,
+    onGetAddressSuggestions: (String) -> Unit,
+    onSelectAddressSuggestion: (SimpleAddressSuggestion) -> Unit,
     focusManager: androidx.compose.ui.focus.FocusManager
 ) {
     Card(
@@ -429,27 +440,20 @@ private fun DeliveryInfoCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Delivery Address
-            OutlinedTextField(
+            // Delivery Address with autocomplete
+            ZonalAddressTextField(
                 value = uiState.deliveryAddress,
                 onValueChange = onUpdateAddress,
-                label = { Text("Адрес доставки") },
-                leadingIcon = {
-                    Icon(Icons.Default.LocationOn, contentDescription = null)
-                },
-                modifier = Modifier.fillMaxWidth(),
+                label = "Адрес доставки",
+                placeholder = "Введите адрес доставки...",
                 isError = uiState.addressError != null,
-                supportingText = {
-                    if (uiState.addressError != null) {
-                        Text(
-                            text = uiState.addressError!!,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
-                },
-                keyboardOptions = KeyboardOptions(
-                    imeAction = ImeAction.Next
-                ),
+                errorMessage = uiState.addressError,
+                suggestions = uiState.addressSuggestions,
+                isLoading = uiState.isLoadingAddressSuggestions,
+                onSuggestionSelected = onSelectAddressSuggestion,
+                onQueryChanged = onGetAddressSuggestions,
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 keyboardActions = KeyboardActions(
                     onNext = { focusManager.moveFocus(FocusDirection.Down) }
                 )

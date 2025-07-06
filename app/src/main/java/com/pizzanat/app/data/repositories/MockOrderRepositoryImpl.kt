@@ -56,7 +56,7 @@ class MockOrderRepositoryImpl @Inject constructor() : OrderRepository {
             deliveryMethod = DeliveryMethod.DELIVERY,
             deliveryAddress = "ул. Тестовая, д. 1, кв. 1",
             deliveryCost = 200.0,
-            paymentMethod = PaymentMethod.CASH,
+            paymentMethod = PaymentMethod.CARD_ON_DELIVERY,
             customerPhone = "+79001234567",
             customerName = "Тестовый Пользователь",
             notes = "Тестовый заказ",

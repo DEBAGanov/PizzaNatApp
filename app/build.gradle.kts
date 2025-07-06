@@ -29,8 +29,8 @@ android {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
 
-            // Development/Testing Backend URL
-            buildConfigField("String", "BASE_API_URL", "\"https://debaganov-pizzanat-d8fb.twc1.net/api/v1/\"")
+            // Development/Testing Backend URL - ОБНОВЛЕН на новый API
+            buildConfigField("String", "BASE_API_URL", "\"https://api.pizzanat.ru/api/v1/\"")
             buildConfigField("String", "ENVIRONMENT", "\"DEBUG\"")
             buildConfigField("boolean", "USE_MOCK_DATA", "false")
         }
@@ -43,7 +43,7 @@ android {
             )
 
             // Production Backend URL
-            buildConfigField("String", "BASE_API_URL", "\"https://api.pizzanat.com/api/v1/\"")
+            buildConfigField("String", "BASE_API_URL", "\"https://api.pizzanat.ru/api/v1/\"")
             buildConfigField("String", "ENVIRONMENT", "\"PRODUCTION\"")
             buildConfigField("boolean", "USE_MOCK_DATA", "false")
         }
@@ -57,7 +57,7 @@ android {
             versionNameSuffix = "-staging"
 
             // Staging Backend URL (для тестирования production окружения)
-            buildConfigField("String", "BASE_API_URL", "\"https://staging.pizzanat.com/api/v1/\"")
+            buildConfigField("String", "BASE_API_URL", "\"https://api.pizzanat.ru/api/v1/\"")
             buildConfigField("String", "ENVIRONMENT", "\"STAGING\"")
             buildConfigField("boolean", "USE_MOCK_DATA", "false")
         }
@@ -109,7 +109,7 @@ dependencies {
     implementation(libs.compose.ui.preview)
     implementation(libs.compose.material3)
     implementation(libs.compose.activity)
-    
+
     // Material 2 для Pull-to-Refresh (совместимо с Material 3)
     implementation("androidx.compose.material:material:1.7.6")
 
@@ -143,6 +143,10 @@ dependencies {
     // Image Loading
     implementation(libs.coil)
 
+    // SMS Retriever API
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
+    implementation("com.google.android.gms:play-services-auth-api-phone:18.1.0")
+
     // Coroutines
     implementation(libs.coroutines.core)
     implementation(libs.coroutines.android)
@@ -159,6 +163,9 @@ dependencies {
     implementation(libs.work.runtime)
     implementation(libs.work.hilt)
 
+    // ЮКасса Payment SDK убран - используется серверная обработка платежей
+    // implementation("ru.yoomoney.sdk.kassa.payments:yookassa-android-sdk:6.6.0")
+    
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

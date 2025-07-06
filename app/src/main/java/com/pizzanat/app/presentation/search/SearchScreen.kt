@@ -114,9 +114,7 @@ fun SearchScreen(
         if (uiState.products.isNotEmpty()) {
             FloatingCartButton(
                 onNavigateToCart = onNavigateToCart,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 16.dp)
+                modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
     }
@@ -408,12 +406,7 @@ private fun SearchResultsContent(
     onAddToCart: (Product) -> Unit
 ) {
     LazyColumn(
-        contentPadding = PaddingValues(
-            start = 16.dp,
-            end = 16.dp,
-            top = 16.dp,
-            bottom = 80.dp // Дополнительное место для floating кнопки
-        ),
+        contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {

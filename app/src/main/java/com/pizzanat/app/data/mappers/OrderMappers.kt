@@ -119,7 +119,7 @@ fun OrderDto.toDomain(): Order {
         deliveryMethod = DeliveryMethod.DELIVERY, // Backend не возвращает метод доставки
         deliveryAddress = this.deliveryAddress,
         deliveryCost = this.deliveryFee,
-        paymentMethod = PaymentMethod.CASH, // Backend не возвращает метод оплаты
+        paymentMethod = PaymentMethod.CARD_ON_DELIVERY, // Backend не возвращает метод оплаты
         customerPhone = this.contactPhone,
         customerName = this.contactName,
         notes = this.comment ?: "",

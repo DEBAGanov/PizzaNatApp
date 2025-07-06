@@ -121,6 +121,15 @@ fun HomeScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+
+                    IconButton(onClick = onNavigateToProfile) {
+                        Icon(
+                            imageVector = Icons.Default.AccountCircle,
+                            contentDescription = "Профиль",
+                            tint = Color.Black
+                        )
+                    }
+/*
                     // Кнопка обновления с очисткой кеша
                     IconButton(onClick = { 
                         clearImageCache(context)
@@ -132,20 +141,14 @@ fun HomeScreen(
                             tint = Color.Black
                         )
                     }
-                    IconButton(onClick = onNavigateToProfile) {
-                        Icon(
-                            imageVector = Icons.Default.AccountCircle,
-                            contentDescription = "Профиль",
-                            tint = Color.Black
-                        )
-                    }
+
                     IconButton(onClick = onNavigateToAdmin) {
                         Icon(
                             imageVector = Icons.Default.Settings,
                             contentDescription = "Админ панель",
                             tint = Color.Black
                         )
-                    }
+                    }*/
                 }
             }
         }

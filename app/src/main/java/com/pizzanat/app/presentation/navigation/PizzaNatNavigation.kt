@@ -53,6 +53,9 @@ import com.pizzanat.app.presentation.auth.phone.PhoneAuthScreen
 import com.pizzanat.app.presentation.auth.phone.SmsCodeScreen
 import com.pizzanat.app.presentation.auth.telegram.TelegramAuthScreen
 import com.pizzanat.app.presentation.order.OrderSuccessScreen
+import com.pizzanat.app.presentation.payment.PaymentWebViewScreen
+import com.pizzanat.app.presentation.payment.PaymentResult
+import java.net.URLDecoder
 
 /**
  * Маршруты навигации приложения
@@ -71,6 +74,7 @@ object PizzaNatRoutes {
     const val CART = "cart"
     const val CHECKOUT = "checkout"
     const val PAYMENT = "payment/{orderTotal}"
+    const val PAYMENT_WEBVIEW = "payment_webview/{paymentUrl}"
     const val ORDER_SUCCESS = "order_success/{orderId}"
     const val PROFILE = "profile"
     const val NOTIFICATIONS = "notifications"
@@ -86,6 +90,7 @@ object PizzaNatRoutes {
     fun productDetail(productId: Long) = "product_detail/$productId"
     fun smsCode(phoneNumber: String) = "sms_code/$phoneNumber"
     fun payment(orderTotal: Double) = "payment/$orderTotal"
+    fun paymentWebView(paymentUrl: String) = "payment_webview/${java.net.URLEncoder.encode(paymentUrl, "UTF-8")}"
     fun orderSuccess(orderId: Long) = "order_success/$orderId"
 }
 
@@ -319,7 +324,12 @@ fun PizzaNatNavigation(
         }
         
         // Экран оплаты
-        composable(PizzaNatRoutes.PAYMENT) { backStackEntry ->
+        composable(
+            route = "payment/{orderTotal}",
+            arguments = listOf(
+                navArgument("orderTotal") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
             val orderTotal = backStackEntry.arguments?.getString("orderTotal")?.toDoubleOrNull() ?: 0.0
             
             // Получаем данные заказа из CheckoutViewModel
@@ -341,6 +351,58 @@ fun PizzaNatNavigation(
                 onOrderSuccess = { order ->
                     navController.navigate(PizzaNatRoutes.orderSuccess(order.id)) {
                         popUpTo(PizzaNatRoutes.HOME) { inclusive = false }
+                    }
+                },
+                onNavigateToPayment = { paymentUrl ->
+                    navController.navigate(PizzaNatRoutes.paymentWebView(paymentUrl))
+                }
+            )
+        }
+        
+        // Экран WebView для оплаты
+        composable(
+            route = "payment_webview/{paymentUrl}",
+            arguments = listOf(
+                navArgument("paymentUrl") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val encodedPaymentUrl = backStackEntry.arguments?.getString("paymentUrl") ?: ""
+            val paymentUrl = URLDecoder.decode(encodedPaymentUrl, "UTF-8")
+            
+            // Получаем PaymentViewModel из предыдущего экрана в @Composable контексте
+            val paymentEntry = remember(backStackEntry) { 
+                try {
+                    navController.getBackStackEntry(PizzaNatRoutes.PAYMENT)
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            val paymentViewModel: com.pizzanat.app.presentation.payment.PaymentViewModel? = 
+                if (paymentEntry != null) hiltViewModel(paymentEntry) else null
+            
+            PaymentWebViewScreen(
+                navController = navController,
+                paymentUrl = paymentUrl,
+                orderId = paymentViewModel?.uiState?.value?.createdOrderId ?: 0L,
+                onPaymentResult = { result ->
+                    when (result) {
+                        is PaymentResult.Success -> {
+                            paymentViewModel?.onPaymentSuccess()
+                            navController.navigate(PizzaNatRoutes.orderSuccess(result.orderId)) {
+                                popUpTo(PizzaNatRoutes.HOME) { inclusive = false }
+                            }
+                        }
+                        is PaymentResult.Failed -> {
+                            paymentViewModel?.onPaymentFailed()
+                            navController.navigateUp()
+                        }
+                        is PaymentResult.Cancelled -> {
+                            navController.navigateUp()
+                        }
+                        is PaymentResult.Error -> {
+                            paymentViewModel?.onPaymentFailed()
+                            navController.navigateUp()
+                        }
                     }
                 }
             )

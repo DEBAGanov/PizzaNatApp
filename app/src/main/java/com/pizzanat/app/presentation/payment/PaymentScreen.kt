@@ -21,7 +21,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -29,6 +31,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.pizzanat.app.R
 import com.pizzanat.app.domain.entities.DeliveryMethod
 import com.pizzanat.app.domain.entities.PaymentMethod
 import com.pizzanat.app.presentation.checkout.OrderData
@@ -44,6 +47,7 @@ fun PaymentScreen(
     onNavigateBack: () -> Unit = {},
     onOrderCreated: (Long) -> Unit = {},
     onOrderSuccess: (com.pizzanat.app.domain.entities.Order) -> Unit = {},
+    onNavigateToPayment: (String) -> Unit = {},
     viewModel: PaymentViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -72,6 +76,14 @@ fun PaymentScreen(
                 onOrderCreated(uiState.createdOrderId!!)
             }
             viewModel.resetOrderCreated()
+        }
+    }
+    
+    // Обработка перехода на оплату
+    LaunchedEffect(uiState.needsPayment, uiState.paymentUrl) {
+        if (uiState.needsPayment && !uiState.paymentUrl.isNullOrEmpty()) {
+            // Переход на экран оплаты ЮКасса через WebView
+            onNavigateToPayment(uiState.paymentUrl!!)
         }
     }
     
@@ -108,6 +120,7 @@ fun PaymentScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(scrollState)
+                .windowInsetsPadding(WindowInsets.navigationBars)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -158,7 +171,10 @@ fun PaymentScreen(
             OrderSummarySection(
                 subtotal = uiState.subtotal,
                 deliveryCost = uiState.deliveryCost,
-                total = uiState.total
+                total = uiState.total,
+                deliveryEstimate = uiState.deliveryEstimate,
+                isCalculatingDelivery = uiState.isCalculatingDelivery,
+                deliveryCalculationError = uiState.deliveryCalculationError
             )
             
             Spacer(modifier = Modifier.height(16.dp))
@@ -183,9 +199,10 @@ fun PaymentScreen(
                     Text("Создание заказа...")
                 } else {
                     Text(
-                        text = "Подтвердить заказ • ${NumberFormat.getCurrencyInstance(Locale("ru", "RU")).format(uiState.total)}",
+                        text = "Оформить заказ • ${NumberFormat.getCurrencyInstance(Locale("ru", "RU")).format(uiState.total)}",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.Black
                     )
                 }
             }
@@ -355,12 +372,6 @@ private fun PaymentMethodCard(
     isSelected: Boolean,
     onSelected: () -> Unit
 ) {
-    val icon = when (method) {
-        PaymentMethod.CASH -> Icons.Default.Star
-        PaymentMethod.CARD_ON_DELIVERY -> Icons.Default.AccountCircle
-        PaymentMethod.ONLINE_CARD -> Icons.Default.ShoppingCart
-    }
-    
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -391,15 +402,31 @@ private fun PaymentMethodCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = if (isSelected) {
-                    MaterialTheme.colorScheme.onPrimaryContainer
-                } else {
-                    MaterialTheme.colorScheme.onSurface
+            when (method) {
+                PaymentMethod.CARD_ON_DELIVERY -> {
+                    Icon(
+                        imageVector = Icons.Default.AccountCircle,
+                        contentDescription = null,
+                        tint = if (isSelected) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSurface
+                        }
+                    )
                 }
-            )
+                PaymentMethod.SBP -> {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_sbp_logo),
+                        contentDescription = null,
+                        tint = if (isSelected) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSurface
+                        },
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
             
             Spacer(modifier = Modifier.width(16.dp))
             
@@ -427,7 +454,10 @@ private fun PaymentMethodCard(
 private fun OrderSummarySection(
     subtotal: Double,
     deliveryCost: Double,
-    total: Double
+    total: Double,
+    deliveryEstimate: com.pizzanat.app.domain.entities.DeliveryEstimate? = null,
+    isCalculatingDelivery: Boolean = false,
+    deliveryCalculationError: String? = null
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -466,28 +496,83 @@ private fun OrderSummarySection(
                 )
             }
             
-            // Delivery cost
+            // Delivery cost with zone information
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Доставка:",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                )
-                Text(
-                    text = if (deliveryCost > 0) {
-                        NumberFormat.getCurrencyInstance(Locale("ru", "RU")).format(deliveryCost)
-                    } else {
-                        "Бесплатно"
-                    },
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = if (deliveryCost > 0) {
-                        MaterialTheme.colorScheme.onSecondaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.primary
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Доставка:",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    
+                    // Показываем информацию о зоне доставки
+                    when {
+                        isCalculatingDelivery -> {
+                            Text(
+                                text = "Расчет стоимости...",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+                            )
+                        }
+                        deliveryEstimate != null -> {
+                            Text(
+                                text = "Зона: ${deliveryEstimate.zoneName}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+                            )
+                            deliveryEstimate.estimatedTime?.let { time ->
+                                Text(
+                                    text = "Время: $time",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+                        deliveryCalculationError != null -> {
+                            Text(
+                                text = "Стандартный тариф",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                            )
+                        }
                     }
+                }
+                
+                if (isCalculatingDelivery) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                } else {
+                    Text(
+                        text = if (deliveryCost > 0) {
+                            NumberFormat.getCurrencyInstance(Locale("ru", "RU")).format(deliveryCost)
+                        } else {
+                            "Бесплатно"
+                        },
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (deliveryCost > 0) {
+                            MaterialTheme.colorScheme.onSecondaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.primary
+                        }
+                    )
+                }
+            }
+            
+            // Показываем ошибку расчета доставки, если есть
+            if (deliveryCalculationError != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = deliveryCalculationError,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
             
@@ -511,7 +596,7 @@ private fun OrderSummarySection(
                     text = NumberFormat.getCurrencyInstance(Locale("ru", "RU")).format(total),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = Color.Black
                 )
             }
         }

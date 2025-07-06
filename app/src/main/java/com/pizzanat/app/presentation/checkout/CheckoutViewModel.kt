@@ -8,7 +8,9 @@ package com.pizzanat.app.presentation.checkout
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pizzanat.app.domain.entities.SimpleAddressSuggestion
 import com.pizzanat.app.domain.entities.CartItem
+import com.pizzanat.app.domain.usecases.address.GetAddressSuggestionsUseCase
 import com.pizzanat.app.domain.usecases.cart.GetCartItemsUseCase
 import com.pizzanat.app.presentation.components.isValidPhoneNumber
 import com.pizzanat.app.presentation.components.normalizePhoneForApi
@@ -31,7 +33,11 @@ data class CheckoutUiState(
     val phoneError: String? = null,
     val nameError: String? = null,
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    // Новые поля для подсказок адресов
+    val addressSuggestions: List<SimpleAddressSuggestion> = emptyList(),
+    val isLoadingAddressSuggestions: Boolean = false,
+    val addressSuggestionsError: String? = null
 )
 
 /**
@@ -48,7 +54,8 @@ data class OrderData(
 
 @HiltViewModel
 class CheckoutViewModel @Inject constructor(
-    private val getCartItemsUseCase: GetCartItemsUseCase
+    private val getCartItemsUseCase: GetCartItemsUseCase,
+    private val getAddressSuggestionsUseCase: GetAddressSuggestionsUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CheckoutUiState())
@@ -168,5 +175,65 @@ class CheckoutViewModel @Inject constructor(
 
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
+    }
+
+    /**
+     * Получение подсказок адресов на основе введенного текста
+     */
+    fun getAddressSuggestions(query: String) {
+        if (query.length < 3) {
+            _uiState.value = _uiState.value.copy(
+                addressSuggestions = emptyList(),
+                isLoadingAddressSuggestions = false,
+                addressSuggestionsError = null
+            )
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isLoadingAddressSuggestions = true,
+                addressSuggestionsError = null
+            )
+
+            getAddressSuggestionsUseCase(query)
+                .onSuccess { suggestions ->
+                    _uiState.value = _uiState.value.copy(
+                        addressSuggestions = suggestions,
+                        isLoadingAddressSuggestions = false,
+                        addressSuggestionsError = null
+                    )
+                }
+                .onFailure { error ->
+                    _uiState.value = _uiState.value.copy(
+                        addressSuggestions = emptyList(),
+                        isLoadingAddressSuggestions = false,
+                        addressSuggestionsError = error.message
+                    )
+                }
+        }
+    }
+
+    /**
+     * Выбор подсказки адреса
+     */
+    fun selectAddressSuggestion(suggestion: SimpleAddressSuggestion) {
+        _uiState.value = _uiState.value.copy(
+            deliveryAddress = suggestion.shortAddress,
+            addressSuggestions = emptyList(),
+            addressError = null,
+            addressSuggestionsError = null
+        )
+    }
+
+    /**
+     * Очистка подсказок адресов
+     */
+    fun clearAddressSuggestions() {
+        _uiState.value = _uiState.value.copy(
+            addressSuggestions = emptyList(),
+            isLoadingAddressSuggestions = false,
+            addressSuggestionsError = null
+        )
     }
 } 

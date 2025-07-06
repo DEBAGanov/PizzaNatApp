@@ -1,13 +1,17 @@
 /**
  * @file: SmsCodeViewModel.kt
  * @description: ViewModel для ввода и проверки SMS кода
- * @dependencies: Hilt, ViewModel, StateFlow, Timer
+ * @dependencies: Hilt, ViewModel, StateFlow, SMS Use Cases
  * @created: 2024-12-20
+ * @updated: 2025-01-23 - Добавлена реальная интеграция с API и детальное логирование
  */
 package com.pizzanat.app.presentation.auth.phone
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pizzanat.app.domain.usecases.auth.SendSmsCodeUseCase
+import com.pizzanat.app.domain.usecases.auth.VerifySmsCodeUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,13 +32,15 @@ data class SmsCodeUiState(
 
 @HiltViewModel
 class SmsCodeViewModel @Inject constructor(
-    // TODO: Inject VerifySmsCodeUseCase when backend is ready
+    private val verifySmsCodeUseCase: VerifySmsCodeUseCase,
+    private val sendSmsCodeUseCase: SendSmsCodeUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SmsCodeUiState())
     val uiState: StateFlow<SmsCodeUiState> = _uiState.asStateFlow()
 
     companion object {
+        private const val TAG = "SmsCodeViewModel"
         private const val RESEND_COUNTDOWN_SECONDS = 60
     }
 
@@ -59,6 +65,27 @@ class SmsCodeViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Автоматическое заполнение SMS кода (для SMS Retriever API)
+     */
+    fun onSmsCodeAutoFilled(smsCode: String) {
+        Log.d(TAG, "📱 Автоматическое заполнение SMS кода: $smsCode")
+        
+        // Валидируем полученный код
+        if (smsCode.matches("\\d{4}".toRegex())) {
+            _uiState.value = _uiState.value.copy(
+                smsCode = smsCode,
+                codeError = null,
+                error = null
+            )
+            
+            // Автоматически проверяем код
+            verifySmsCode()
+        } else {
+            Log.w(TAG, "⚠️ Некорректный автоматически заполненный код: $smsCode")
+        }
+    }
+
     fun verifySmsCode() {
         val currentState = _uiState.value
         
@@ -75,6 +102,10 @@ class SmsCodeViewModel @Inject constructor(
 
     private fun performVerifySmsCode(phoneNumber: String, smsCode: String) {
         viewModelScope.launch {
+            Log.d(TAG, "🚀 Начинаем проверку SMS кода:")
+            Log.d(TAG, "  📱 Номер телефона: $phoneNumber")
+            Log.d(TAG, "  🔢 SMS код: $smsCode")
+            
             _uiState.value = _uiState.value.copy(
                 isLoading = true,
                 error = null,
@@ -82,28 +113,55 @@ class SmsCodeViewModel @Inject constructor(
             )
 
             try {
-                // TODO: Implement actual SMS code verification when backend is ready
-                // val result = verifySmsCodeUseCase(phoneNumber, smsCode)
+                val result = verifySmsCodeUseCase(phoneNumber, smsCode)
                 
-                // Симуляция проверки кода (удалить когда будет готов backend)
-                kotlinx.coroutines.delay(1500)
+                Log.d(TAG, "📋 Результат проверки:")
+                Log.d(TAG, "  ✅ Success: ${result.isSuccess}")
                 
-                // Симуляция: код "1234" считается правильным
-                if (smsCode == "1234") {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        isAuthSuccessful = true,
-                        error = null
-                    )
+                if (result.isSuccess) {
+                    val response = result.getOrThrow()
+                    
+                    Log.d(TAG, "📊 Детали ответа:")
+                    Log.d(TAG, "  🎯 success: ${response.success}")
+                    Log.d(TAG, "  👤 authResponse: ${response.authResponse != null}")
+                    Log.d(TAG, "  💬 message: ${response.message}")
+                    Log.d(TAG, "  ❌ error: ${response.error}")
+                    
+                    if (response.authResponse != null) {
+                        Log.d(TAG, "🔑 Данные авторизации:")
+                        Log.d(TAG, "  🎫 Token: ${response.authResponse.token.take(20)}...")
+                        Log.d(TAG, "  👤 User ID: ${response.authResponse.user.id}")
+                        Log.d(TAG, "  📧 Username: ${response.authResponse.user.username}")
+                    }
+                    
+                    if (response.success && response.authResponse != null) {
+                        Log.d(TAG, "🎉 УСПЕШНАЯ АВТОРИЗАЦИЯ! Устанавливаем isAuthSuccessful = true")
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            isAuthSuccessful = true,
+                            error = null
+                        )
+                        Log.d(TAG, "✅ UI состояние обновлено, isAuthSuccessful = ${_uiState.value.isAuthSuccessful}")
+                    } else {
+                        Log.w(TAG, "⚠️ Ответ получен, но авторизация не успешна")
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            codeError = response.message ?: response.error ?: "Неверный код. Попробуйте еще раз",
+                            smsCode = "" // Очищаем поле при ошибке
+                        )
+                    }
                 } else {
+                    val exception = result.exceptionOrNull()
+                    Log.e(TAG, "❌ Ошибка при проверке кода: ${exception?.message}")
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        codeError = "Неверный код. Попробуйте еще раз",
+                        codeError = exception?.message ?: "Ошибка проверки кода",
                         smsCode = "" // Очищаем поле при ошибке
                     )
                 }
                 
             } catch (e: Exception) {
+                Log.e(TAG, "💥 Исключение при проверке кода", e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = e.message ?: "Ошибка проверки кода"
@@ -130,20 +188,24 @@ class SmsCodeViewModel @Inject constructor(
             )
 
             try {
-                // TODO: Implement actual SMS resending when backend is ready
-                // val result = sendSmsCodeUseCase(phoneNumber)
+                val result = sendSmsCodeUseCase(phoneNumber)
                 
-                // Симуляция повторной отправки SMS
-                kotlinx.coroutines.delay(1000)
-                
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = null,
-                    smsCode = "" // Очищаем поле при повторной отправке
-                )
-                
-                // Запускаем обратный отсчет заново
-                startResendCountdown()
+                if (result.isSuccess) {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = null,
+                        smsCode = "" // Очищаем поле при повторной отправке
+                    )
+                    
+                    // Запускаем обратный отсчет заново
+                    startResendCountdown()
+                } else {
+                    val exception = result.exceptionOrNull()
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = exception?.message ?: "Ошибка повторной отправки SMS"
+                    )
+                }
                 
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(

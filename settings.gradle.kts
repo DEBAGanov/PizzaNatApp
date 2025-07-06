@@ -16,6 +16,10 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // ЮКасса SDK repository убран - используется серверная обработка платежей
+        // maven {
+        //     url = uri("https://artifactory.yoomoney.ru/artifactory/maven-public")
+        // }
     }
 }
 

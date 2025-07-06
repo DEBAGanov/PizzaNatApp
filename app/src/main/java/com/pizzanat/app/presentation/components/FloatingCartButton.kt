@@ -68,7 +68,8 @@ class FloatingCartViewModel @Inject constructor(
 }
 
 /**
- * Floating кнопка корзины
+ * Floating кнопка корзины с поддержкой WindowInsets для корректного отображения
+ * на устройствах с навигационными панелями
  */
 @Composable
 fun FloatingCartButton(
@@ -88,6 +89,16 @@ fun FloatingCartButton(
         ) + fadeOut(),
         modifier = modifier
     ) {
+        // Контейнер с отступами от системных bars
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .padding(
+                    horizontal = 16.dp,
+                    vertical = 16.dp
+                )
+    ) {
         Button(
             onClick = onNavigateToCart,
             colors = ButtonDefaults.buttonColors(
@@ -102,7 +113,6 @@ fun FloatingCartButton(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp)
-                .padding(horizontal = 16.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -123,6 +133,7 @@ fun FloatingCartButton(
                     fontWeight = FontWeight.Bold,
                     color = Color.Black
                 )
+                }
             }
         }
     }
