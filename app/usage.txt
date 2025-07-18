@@ -21965,6 +21965,11 @@ com.pizzanat.app.presentation.notifications.NotificationsUiState:
     public final java.lang.String component4()
     public final com.pizzanat.app.domain.entities.NotificationType component5()
     public final java.lang.String getError()
+com.pizzanat.app.presentation.payment.DeeplinkWebViewClient:
+    public static final int $stable
+    private static final java.lang.String TAG
+    public void <init>()
+    public synthetic void <init>(kotlin.jvm.functions.Function1,long,kotlin.jvm.functions.Function0,kotlin.jvm.functions.Function1,int,kotlin.jvm.internal.DefaultConstructorMarker)
 com.pizzanat.app.presentation.payment.PaymentResult$Cancelled:
     public static final int $stable
 com.pizzanat.app.presentation.payment.PaymentResult$Error:

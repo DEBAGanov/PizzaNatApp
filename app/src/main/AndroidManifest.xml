@@ -5,6 +5,48 @@
     <!-- Разрешения для работы с сетью -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    
+    <!-- Queries для платежных приложений (ЮКасса deeplinks) -->
+    <queries>
+        <!-- SberPay -->
+        <package android:name="ru.sberbankmobile" />
+        <!-- Tinkoff -->
+        <package android:name="com.idamobile.tinkoff.android" />
+        <!-- YooMoney -->
+        <package android:name="ru.yandex.money" />
+        <!-- MirPay -->
+        <package android:name="ru.nspk.mirpay" />
+        <!-- ВТБ-Онлайн -->
+        <package android:name="ru.vtb.mobilebanking.android" />
+        <!-- Альфа-Банк -->
+        <package android:name="ru.alfabank.mobile.android" />
+        
+        <!-- Intent filters для deeplink'ов -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="sberpay" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="sbolpay" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="tinkoffbank" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="yoomoney" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="mirpay" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="bank" />
+        </intent>
+    </queries>
 
     <application
         android:name=".PizzaNatApplication"

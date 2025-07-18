@@ -116,61 +116,16 @@ private fun WebView.setupWebView(
         displayZoomControls = false
     }
     
-    webViewClient = object : WebViewClient() {
-        override fun onPageFinished(view: WebView?, url: String?) {
-            super.onPageFinished(view, url)
-            onPageFinished()
-            onCanGoBackChanged(view?.canGoBack() == true)
-            
-            // Проверяем URL для определения результата платежа
-            url?.let { checkPaymentResult(it, orderId, onPaymentResult) }
-        }
-        
-        override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
-            url?.let { checkPaymentResult(it, orderId, onPaymentResult) }
-            return false
-        }
-    }
+    // Используем кастомный WebViewClient для обработки deeplink'ов
+    webViewClient = DeeplinkWebViewClient(
+        onPaymentResult = onPaymentResult,
+        orderId = orderId,
+        onPageFinished = { onPageFinished() },
+        onCanGoBackChanged = { canGoBack -> onCanGoBackChanged(canGoBack) }
+    )
 }
 
-private fun checkPaymentResult(url: String, orderId: Long, onPaymentResult: (PaymentResult) -> Unit) {
-    when {
-        url.contains("success") || url.contains("payment_success") -> {
-            // Используем переданный orderId или пытаемся извлечь из URL
-            val finalOrderId = if (orderId > 0) orderId else extractOrderIdFromUrl(url)
-            onPaymentResult(PaymentResult.Success(finalOrderId))
-        }
-        url.contains("fail") || url.contains("payment_fail") -> {
-            onPaymentResult(PaymentResult.Failed)
-        }
-        url.contains("cancel") || url.contains("payment_cancel") -> {
-            onPaymentResult(PaymentResult.Cancelled)
-        }
-        // Можно добавить другие условия в зависимости от URL схемы вашего backend
-    }
-}
 
-private fun extractOrderIdFromUrl(url: String): Long {
-    // Пытаемся извлечь orderId из URL
-    // Ожидаем URL вида: ...?orderId=123 или .../order/123
-    return try {
-        when {
-            url.contains("orderId=") -> {
-                val regex = Regex("orderId=(\\d+)")
-                val match = regex.find(url)
-                match?.groupValues?.get(1)?.toLong() ?: 0L
-            }
-            url.contains("/order/") -> {
-                val regex = Regex("/order/(\\d+)")
-                val match = regex.find(url)
-                match?.groupValues?.get(1)?.toLong() ?: 0L
-            }
-            else -> 0L
-        }
-    } catch (e: Exception) {
-        0L
-    }
-}
 
 /**
  * Результат платежа
