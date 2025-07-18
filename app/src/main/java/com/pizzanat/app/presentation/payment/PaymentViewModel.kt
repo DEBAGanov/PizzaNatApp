@@ -262,16 +262,35 @@ class PaymentViewModel @Inject constructor(
             Log.d("PaymentViewModel", "  💳 Общая сумма (total): ${currentState.total} ₽")
             Log.d("PaymentViewModel", "  📤 Передаваемая сумма (amount): $amount ₽")
             
+            // ДОПОЛНИТЕЛЬНАЯ ВАЛИДАЦИЯ
+            if (amount <= 0) {
+                Log.e("PaymentViewModel", "❌ ОШИБКА: Некорректная сумма платежа: $amount")
+                _uiState.value = _uiState.value.copy(
+                    isCreatingOrder = false,
+                    error = "Ошибка: некорректная сумма платежа ($amount ₽)"
+                )
+                return
+            }
+            
             val request = CreatePaymentRequest(
                 amount = amount,
                 currency = "RUB",
                 orderId = orderId,
                 paymentMethod = PaymentMethod.SBP,
                 description = "Оплата заказа #$orderId через СБП",
-                customerEmail = email,
-                customerPhone = phone,
-                returnUrl = "pizzanat://payment_result"
+                customerEmail = email.takeIf { it.isNotBlank() },
+                customerPhone = phone.takeIf { it.isNotBlank() },
+                returnUrl = "dimbopizza://payment_result"
             )
+            
+            Log.d("PaymentViewModel", "📋 Данные запроса платежа:")
+            Log.d("PaymentViewModel", "  orderId: $orderId")
+            Log.d("PaymentViewModel", "  amount: $amount")
+            Log.d("PaymentViewModel", "  currency: RUB")
+            Log.d("PaymentViewModel", "  method: SBP")
+            Log.d("PaymentViewModel", "  email: ${request.customerEmail ?: "не указан"}")
+            Log.d("PaymentViewModel", "  phone: ${request.customerPhone ?: "не указан"}")
+            Log.d("PaymentViewModel", "  description: ${request.description}")
             
             val paymentResult = createPaymentUseCase(request)
             

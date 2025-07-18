@@ -70,7 +70,7 @@ fun SplashScreen(
         Spacer(modifier = Modifier.height(32.dp))
         
         Text(
-            text = "PizzaNat",
+            text = "ДИМБО Пицца",
             style = MaterialTheme.typography.headlineLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary

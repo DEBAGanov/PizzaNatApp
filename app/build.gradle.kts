@@ -16,8 +16,8 @@ android {
         applicationId = "com.pizzanat.app"
         minSdk = 25
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -30,7 +30,7 @@ android {
             versionNameSuffix = "-debug"
 
             // Development/Testing Backend URL - ОБНОВЛЕН на новый API
-            buildConfigField("String", "BASE_API_URL", "\"https://api.pizzanat.ru/api/v1/\"")
+            buildConfigField("String", "BASE_API_URL", "\"https://api.dimbopizza.ru/api/v1/\"")
             buildConfigField("String", "ENVIRONMENT", "\"DEBUG\"")
             buildConfigField("boolean", "USE_MOCK_DATA", "false")
         }
@@ -43,7 +43,7 @@ android {
             )
 
             // Production Backend URL
-            buildConfigField("String", "BASE_API_URL", "\"https://api.pizzanat.ru/api/v1/\"")
+            buildConfigField("String", "BASE_API_URL", "\"https://api.dimbopizza.ru/api/v1/\"")
             buildConfigField("String", "ENVIRONMENT", "\"PRODUCTION\"")
             buildConfigField("boolean", "USE_MOCK_DATA", "false")
         }
@@ -57,7 +57,7 @@ android {
             versionNameSuffix = "-staging"
 
             // Staging Backend URL (для тестирования production окружения)
-            buildConfigField("String", "BASE_API_URL", "\"https://api.pizzanat.ru/api/v1/\"")
+            buildConfigField("String", "BASE_API_URL", "\"https://api.dimbopizza.ru/api/v1/\"")
             buildConfigField("String", "ENVIRONMENT", "\"STAGING\"")
             buildConfigField("boolean", "USE_MOCK_DATA", "false")
         }

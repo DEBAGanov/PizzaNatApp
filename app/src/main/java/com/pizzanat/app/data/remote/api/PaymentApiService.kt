@@ -8,6 +8,7 @@
 package com.pizzanat.app.data.remote.api
 
 import com.pizzanat.app.data.remote.dto.PaymentDto
+import com.google.gson.annotations.SerializedName
 import retrofit2.Response
 import retrofit2.http.*
 
@@ -71,37 +72,37 @@ interface PaymentApiService {
  * DTO для создания платежа ЮКасса
  */
 data class CreatePaymentRequestDto(
-    val orderId: Long,
-    val amount: Double, // Сумма платежа (товары + доставка)
-    val currency: String = "RUB",
-    val method: String, // "BANK_CARD" или "SBP"
-    val description: String,
-    val bankId: String? = null, // Для СБП платежей
-    val customerEmail: String? = null,
-    val customerPhone: String? = null,
-    val returnUrl: String? = null
+    @SerializedName("orderId") val orderId: Long,
+    @SerializedName("amount") val amount: Double, // Сумма платежа (товары + доставка)
+    @SerializedName("currency") val currency: String = "RUB",
+    @SerializedName("method") val method: String, // "BANK_CARD" или "SBP"
+    @SerializedName("description") val description: String,
+    @SerializedName("bankId") val bankId: String? = null, // Для СБП платежей
+    @SerializedName("customerEmail") val customerEmail: String? = null,
+    @SerializedName("customerPhone") val customerPhone: String? = null,
+    @SerializedName("returnUrl") val returnUrl: String? = null
 )
 
 /**
  * DTO для банка СБП
  */
 data class SbpBankDto(
-    val id: String,
-    val name: String,
-    val bic: String? = null
+    @SerializedName("id") val id: String,
+    @SerializedName("name") val name: String,
+    @SerializedName("bic") val bic: String? = null
 )
 
 /**
  * DTO для health check
  */
 data class HealthCheckDto(
-    val status: String,
-    val timestamp: String
+    @SerializedName("status") val status: String,
+    @SerializedName("timestamp") val timestamp: String
 )
 
 /**
  * DTO для подтверждения платежа
  */
 data class ConfirmPaymentRequestDto(
-    val paymentToken: String
+    @SerializedName("paymentToken") val paymentToken: String
 ) 

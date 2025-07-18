@@ -32,8 +32,12 @@ class PaymentRepositoryImpl @Inject constructor(
         withContext(Dispatchers.IO) {
             try {
                 Log.d(TAG, "🔄 Создание платежа: ${request.description}")
+                Log.d(TAG, "🔄 Данные для DTO: orderId=${request.orderId}, amount=${request.amount}, method=${request.paymentMethod}")
                 
-                val response = paymentApiService.createPayment(request.toDto())
+                val requestDto = request.toDto()
+                Log.d(TAG, "🔄 DTO запроса: $requestDto")
+                
+                val response = paymentApiService.createPayment(requestDto)
                 
                 if (response.isSuccessful) {
                     val paymentDto = response.body()
@@ -45,9 +49,11 @@ class PaymentRepositoryImpl @Inject constructor(
                         Result.failure(Exception("Пустой ответ сервера"))
                     }
                 } else {
-                    val errorMsg = "Ошибка создания платежа: ${response.code()}"
+                    val errorBody = response.errorBody()?.string()
+                    val errorMsg = "Ошибка создания платежа: HTTP ${response.code()}"
                     Log.e(TAG, "❌ $errorMsg")
-                    Result.failure(Exception(errorMsg))
+                    Log.e(TAG, "❌ Тело ошибки: $errorBody")
+                    Result.failure(Exception("$errorMsg: $errorBody"))
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "❌ Исключение при создании платежа", e)

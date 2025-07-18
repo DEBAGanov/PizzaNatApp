@@ -7,6 +7,39 @@
 
 ---
 
+## [2025-01-28] - Исправление release-сборки и обфускации
+
+### Исправлено
+- **Ошибка ClassCastException**: Создан файл `proguard-rules.pro` с правилами для корректной обфускации
+- **Отсутствие ProGuard правил**: Добавлены правила для Retrofit, Gson, Room, Hilt, Compose
+- **Обфускация моделей данных**: Защищены от обфускации DTO классы и domain entities
+- **Kotlin Coroutines**: Добавлены правила для корректной работы корутин в release
+- **Reflection в Compose**: Сохранены метаданные для корректной работы Compose UI
+- **R8 совместимость**: Исправлены устаревшие директивы `-keepclassesinheritsof` на современные аналоги
+- **Критические ошибки Compose**: Исправлены ClassCastException в `AnimatedContentKt`, `NavHostKt`, `HiltViewModelFactory`
+- **Лямбда-функции**: Добавлены правила сохранения lambda-выражений и анонимных классов
+- **Navigation Compose**: Специальные правила для NavHost и NavBackStackEntry
+- **Hilt ViewModel Factory**: Полная защита от обфускации для корректной работы DI
+- **ЮКасса платежи HTTP 400**: Исправлена ошибка "ID заказа обязательно" в release-сборке
+- **JSON сериализация**: Добавлены аннотации `@SerializedName` в `CreatePaymentRequestDto`
+
+### Добавлено
+- **app/proguard-rules.pro**: Полный набор правил ProGuard для стабильной работы release-сборки
+- **Правила для зависимостей**: Retrofit, OkHttp, Gson, Room, Hilt, Coil, Google Play Services
+- **Защита enum классов**: Предотвращение обфускации enum значений
+- **Отладочная информация**: Сохранение номеров строк для отладки в release
+- **Критические правила Compose**: Специальные правила для AnimatedContent, NavHost, UI Platform
+- **Hilt DI интеграция**: Защита generated классов, modules, factories, members injectors
+- **Lambda preservation**: Сохранение лямбда-функций и анонимных классов
+- **Debug mapping**: Verbose режим с генерацией usage.txt и mapping.txt для диагностики
+
+### Изменено
+- **Release-сборка**: Теперь корректно работает с обфускацией без ClassCastException
+- **Производительность**: Уменьшен размер APK благодаря правильной настройке ProGuard
+- **APK файл**: Успешно создан `app-release-unsigned.apk` размером 8.6MB
+
+---
+
 ## [2025-01-28] - Исправление интеграции СБП платежей с WebView
 
 ### Исправлено
