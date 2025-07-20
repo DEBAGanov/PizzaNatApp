@@ -80,7 +80,9 @@ data class CreateOrderRequest(
     @SerializedName("comment")
     val comment: String? = null,
     @SerializedName("notes")
-    val notes: String? = null
+    val notes: String? = null,
+    @SerializedName("paymentMethod")
+    val paymentMethod: String = "CASH"
 )
 
 data class CreateOrderResponse(

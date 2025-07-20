@@ -417,58 +417,21 @@ fun PizzaNatNavigation(
         ) { backStackEntry ->
             val orderId = backStackEntry.arguments?.getLong("orderId") ?: 0L
             
-            // Получаем данные заказа из PaymentViewModel если доступны
-            val parentEntry = remember(backStackEntry) {
-                try {
-                    navController.getBackStackEntry(PizzaNatRoutes.PAYMENT)
-                } catch (e: Exception) {
-                    null
-                }
-            }
-            val paymentViewModel: com.pizzanat.app.presentation.payment.PaymentViewModel? = 
-                if (parentEntry != null) hiltViewModel(parentEntry) else null
+            android.util.Log.d("OrderSuccess", "📋 Экран успеха заказа для ID: $orderId")
             
-            if (paymentViewModel != null) {
-                val paymentUiState by paymentViewModel.uiState.collectAsStateWithLifecycle()
-                val createdOrder = paymentUiState.createdOrder
-                
-                if (createdOrder != null) {
-                    // Показываем экран с полной информацией о заказе
-                    OrderSuccessScreen(
-                        order = createdOrder,
-                        onNavigateToHome = {
-                            navController.navigate(PizzaNatRoutes.HOME) {
-                                popUpTo(PizzaNatRoutes.HOME) { inclusive = false }
-                            }
-                        },
-                        onViewOrderDetails = {
-                            navController.navigate(PizzaNatRoutes.PROFILE) {
-                                popUpTo(PizzaNatRoutes.HOME) { inclusive = false }
-                            }
-                        }
-                    )
-                } else {
-                    // Fallback - показываем простое сообщение об успехе
-                    OrderSuccessFallback(
-                        orderId = orderId,
-                        onNavigateToHome = {
-                            navController.navigate(PizzaNatRoutes.HOME) {
-                                popUpTo(PizzaNatRoutes.HOME) { inclusive = false }
-                            }
-                        }
-                    )
-                }
-            } else {
-                // Fallback когда PaymentViewModel недоступен
-                OrderSuccessFallback(
-                    orderId = orderId,
-                    onNavigateToHome = {
-                        navController.navigate(PizzaNatRoutes.HOME) {
-                            popUpTo(PizzaNatRoutes.HOME) { inclusive = false }
-                        }
+            OrderSuccessScreen(
+                orderId = orderId,
+                onNavigateToHome = {
+                    navController.navigate(PizzaNatRoutes.HOME) {
+                        popUpTo(PizzaNatRoutes.HOME) { inclusive = false }
                     }
-                )
-            }
+                },
+                onViewOrderDetails = {
+                    navController.navigate(PizzaNatRoutes.PROFILE) {
+                        popUpTo(PizzaNatRoutes.HOME) { inclusive = false }
+                    }
+                }
+            )
         }
         
         // Экран уведомлений

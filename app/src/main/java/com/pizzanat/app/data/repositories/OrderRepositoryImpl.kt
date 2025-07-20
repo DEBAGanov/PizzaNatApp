@@ -137,24 +137,71 @@ class OrderRepositoryImpl @Inject constructor(
 
     override suspend fun getOrderById(orderId: Long): Result<Order?> = withContext(Dispatchers.IO) {
         return@withContext try {
+            Log.d("OrderRepository", "🔍 Запрос заказа #$orderId через API...")
+            
             val apiResult = safeApiCall { orderApiService.getOrderById(orderId) }
+            
+            Log.d("OrderRepository", "📡 API результат для заказа #$orderId: success=${apiResult.isSuccess}")
             
             if (apiResult.isSuccess) {
                 val orderDto = apiResult.getOrNull()
+                Log.d("OrderRepository", "📦 DTO заказа получен: $orderDto")
+                
                 if (orderDto != null) {
+                    Log.d("OrderRepository", "📋 DTO детали заказа #$orderId:")
+                    Log.d("OrderRepository", "  DTO ID: ${orderDto.id}")
+                    Log.d("OrderRepository", "  DTO Status: '${orderDto.status}'")
+                    Log.d("OrderRepository", "  DTO TotalAmount: ${orderDto.totalAmount}")
+                    Log.d("OrderRepository", "  DTO DeliveryFee: ${orderDto.deliveryFee}") 
+                    Log.d("OrderRepository", "  DTO ContactName: '${orderDto.contactName}'")
+                    Log.d("OrderRepository", "  DTO ContactPhone: '${orderDto.contactPhone}'")
+                    Log.d("OrderRepository", "  DTO DeliveryAddress: '${orderDto.deliveryAddress}'")
+                    Log.d("OrderRepository", "  DTO DeliveryLocationName: '${orderDto.deliveryLocationName}'")
+                    Log.d("OrderRepository", "  DTO Items count: ${orderDto.items?.size ?: 0}")
+                    
+                    // 🔍 НОВОЕ: Логируем весь JSON для диагностики
+                    try {
+                        val gson = com.google.gson.Gson()
+                        val jsonString = gson.toJson(orderDto)
+                        Log.d("OrderRepository", "📄 Полный JSON заказа: $jsonString")
+                    } catch (e: Exception) {
+                        Log.w("OrderRepository", "⚠️ Не удалось сериализовать DTO в JSON: ${e.message}")
+                    }
+                    
+                    orderDto.items?.forEachIndexed { index, item ->
+                        Log.d("OrderRepository", "    DTO Item ${index + 1}: ${item.productName} - ${item.quantity} × ${item.price}₽ = ${item.subtotal}₽")
+                    }
+                    
+                    Log.d("OrderRepository", "🔄 Преобразование DTO в Domain объект...")
                     val order = orderDto.toDomain()
-                    Log.d("OrderRepository", "Заказ загружен с API: ${order.id}")
+                    
+                    Log.d("OrderRepository", "✅ Domain объект создан для заказа #$orderId:")
+                    Log.d("OrderRepository", "  Domain ID: ${order.id}")
+                    Log.d("OrderRepository", "  Domain Status: ${order.status}")
+                    Log.d("OrderRepository", "  Domain TotalAmount: ${order.totalAmount}")
+                    Log.d("OrderRepository", "  Domain CustomerName: '${order.customerName}'")
+                    Log.d("OrderRepository", "  Domain CustomerPhone: '${order.customerPhone}'")
+                    Log.d("OrderRepository", "  Domain DeliveryAddress: '${order.deliveryAddress}'")
+                    Log.d("OrderRepository", "  Domain Items count: ${order.items.size}")
+                    Log.d("OrderRepository", "  Domain GrandTotal: ${order.grandTotal}")
+                    
+                    order.items.forEachIndexed { index, item ->
+                        Log.d("OrderRepository", "    Domain Item ${index + 1}: ${item.productName} - ${item.quantity} × ${item.productPrice}₽ = ${item.totalPrice}₽")
+                    }
+                    
                     Result.success(order)
                 } else {
-                    Log.w("OrderRepository", "Заказ не найден через API")
+                    Log.w("OrderRepository", "⚠️ Заказ #$orderId не найден в API (orderDto = null)")
                     Result.success(null)
                 }
             } else {
-                Log.w("OrderRepository", "Ошибка API заказа: ${apiResult.getErrorMessage()}")
-                Result.failure(Exception("API Error: ${apiResult.getErrorMessage()}"))
+                val errorMessage = apiResult.getErrorMessage()
+                Log.e("OrderRepository", "❌ Ошибка API при получении заказа #$orderId: $errorMessage")
+                Result.failure(Exception("API Error: $errorMessage"))
             }
         } catch (e: Exception) {
-            Log.e("OrderRepository", "Исключение при получении заказа: ${e.message}")
+            Log.e("OrderRepository", "💥 Исключение при получении заказа #$orderId: ${e.message}")
+            Log.e("OrderRepository", "💥 Stacktrace: ${e.stackTraceToString()}")
             Result.failure(e)
         }
     }
@@ -173,16 +220,27 @@ class OrderRepositoryImpl @Inject constructor(
             // Нормализуем номер телефона перед отправкой в API
             val normalizedPhone = normalizePhoneNumber(customerPhone)
             
+            // Преобразуем PaymentMethod в строку для API
+            val paymentMethodString = when (paymentMethod) {
+                PaymentMethod.SBP -> "SBP"
+                PaymentMethod.CARD_ON_DELIVERY -> "CASH"
+            }
+            
             // Backend автоматически берет товары из корзины пользователя
             val createOrderRequest = createOrderRequest(
                 deliveryAddress = deliveryAddress,
                 contactName = customerName,
                 contactPhone = normalizedPhone,
-                comment = notes
+                comment = notes,
+                paymentMethod = paymentMethodString
             )
             
-            Log.d("OrderRepository", "Создание заказа через API: deliveryAddress=$deliveryAddress, contactName=$customerName")
-            Log.d("OrderRepository", "Оригинальный телефон: '$customerPhone', нормализованный: '$normalizedPhone'")
+            Log.d("OrderRepository", "Создание заказа через API:")
+            Log.d("OrderRepository", "  deliveryAddress: $deliveryAddress")
+            Log.d("OrderRepository", "  contactName: $customerName")
+            Log.d("OrderRepository", "  paymentMethod: ${paymentMethod.displayName} ($paymentMethodString)")
+            Log.d("OrderRepository", "  deliveryMethod: ${deliveryMethod.displayName}")
+            Log.d("OrderRepository", "  originalPhone: '$customerPhone', normalized: '$normalizedPhone'")
             
             val apiResult = safeApiCall { orderApiService.createOrder(createOrderRequest) }
             

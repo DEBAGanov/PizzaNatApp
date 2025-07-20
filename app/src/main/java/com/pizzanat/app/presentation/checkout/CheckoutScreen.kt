@@ -232,14 +232,18 @@ private fun CheckoutContent(
 ) {
     val scrollState = rememberScrollState()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState)
-            .windowInsetsPadding(WindowInsets.navigationBars)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+    Box(
+        modifier = Modifier.fillMaxSize()
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .padding(16.dp)
+                .padding(bottom = 80.dp), // Отступ снизу для фиксированной кнопки
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
         // Error Message
         AnimatedVisibility(
             visible = uiState.error != null,
@@ -295,36 +299,52 @@ private fun CheckoutContent(
             focusManager = focusManager
         )
 
-        // Proceed to Payment Button
-        Button(
-            onClick = onProceedToPayment,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            shape = RoundedCornerShape(28.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = Color.Black
-            ),
-            elevation = ButtonDefaults.buttonElevation(
-                defaultElevation = 4.dp,
-                pressedElevation = 2.dp
-            )
-        ) {
-            Icon(
-                imageVector = Icons.Default.Star,
-                contentDescription = null,
-                tint = Color.Black
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "Перейти к оплате",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
+            Spacer(modifier = Modifier.height(24.dp))
         }
-
-        Spacer(modifier = Modifier.height(32.dp))
+        
+        // Фиксированная кнопка "Перейти к оплате" внизу экрана
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .background(
+                    brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            MaterialTheme.colorScheme.background.copy(alpha = 0.8f),
+                            MaterialTheme.colorScheme.background
+                        )
+                    )
+                )
+                .padding(horizontal = 16.dp)
+                .padding(top = 20.dp, bottom = 16.dp)
+        ) {
+            Button(
+                onClick = onProceedToPayment,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(28.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = CategoryPlateYellow,
+                    contentColor = Color.Black
+                ),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Star,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = Color.Black
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Перейти к оплате",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
     }
 }
 

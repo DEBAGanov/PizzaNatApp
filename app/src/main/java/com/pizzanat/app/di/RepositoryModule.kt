@@ -105,4 +105,10 @@ object RepositoryModule {
     ): PaymentRepository {
         return com.pizzanat.app.data.repositories.PaymentRepositoryImpl(paymentApiService)
     }
+    
+    @Provides
+    @Singleton
+    fun provideSharedOrderStorage(): com.pizzanat.app.presentation.order.SharedOrderStorage {
+        return com.pizzanat.app.presentation.order.SharedOrderStorage()
+    }
 } 

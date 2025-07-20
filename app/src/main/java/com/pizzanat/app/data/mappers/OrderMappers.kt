@@ -110,34 +110,93 @@ fun List<OrderEntity>.toDomain(): List<Order> {
  * Преобразование OrderDto в Order (Domain)
  */
 fun OrderDto.toDomain(): Order {
+    // Диагностическое логирование
+    android.util.Log.d("OrderMappers", "🔄 Преобразование OrderDto в Order:")
+    android.util.Log.d("OrderMappers", "  DTO.id: ${this.id}")
+    android.util.Log.d("OrderMappers", "  DTO.totalAmount: ${this.totalAmount}")
+    android.util.Log.d("OrderMappers", "  DTO.deliveryFee: ${this.deliveryFee}")
+    android.util.Log.d("OrderMappers", "  DTO.deliveryAddress: '${this.deliveryAddress}'")
+    android.util.Log.d("OrderMappers", "  DTO.contactName: '${this.contactName}'")
+    android.util.Log.d("OrderMappers", "  DTO.contactPhone: '${this.contactPhone}'")
+    android.util.Log.d("OrderMappers", "  DTO.items?.size: ${this.items?.size}")
+    
+    // 🔧 ФИКС: Восстанавливаем стоимость доставки если она 0 но есть адрес
+    val actualDeliveryCost = if (this.deliveryFee == 0.0 && this.deliveryAddress.isNotBlank() && this.deliveryAddress != "Самовывоз") {
+        250.0 // Стандартная стоимость доставки для Волжска
+    } else {
+        this.deliveryFee
+    }
+    
+    // 🔧 НОВЫЙ ФИКС: Преобразуем товары и пересчитываем общую сумму
+    val domainItems = this.items?.map { it.toDomain() } ?: emptyList()
+    
+    // Пересчитываем totalAmount на основе реальных цен товаров
+    val calculatedTotalAmount = domainItems.sumOf { it.totalPrice }
+    
+    android.util.Log.d("OrderMappers", "🔧 Исправления:")
+    android.util.Log.d("OrderMappers", "  Стоимость доставки: $actualDeliveryCost (было: ${this.deliveryFee})")
+    android.util.Log.d("OrderMappers", "  TotalAmount из API: ${this.totalAmount}")
+    android.util.Log.d("OrderMappers", "  TotalAmount пересчитанная: $calculatedTotalAmount")
+    android.util.Log.d("OrderMappers", "  Разница: ${calculatedTotalAmount - this.totalAmount}")
+    
+    // Используем пересчитанную сумму если она сильно отличается от API
+    val actualTotalAmount = if (kotlin.math.abs(calculatedTotalAmount - this.totalAmount) > 10.0) {
+        android.util.Log.w("OrderMappers", "⚠️ БОЛЬШАЯ РАЗНИЦА! Используем пересчитанную сумму: $calculatedTotalAmount вместо ${this.totalAmount}")
+        calculatedTotalAmount
+    } else {
+        this.totalAmount
+    }
+    
     return Order(
         id = this.id,
         userId = this.userId ?: 0L,
-        items = this.items?.map { it.toDomain() } ?: emptyList(),
+        items = domainItems,
         status = parseOrderStatus(this.status),
-        totalAmount = this.totalAmount,
-        deliveryMethod = DeliveryMethod.DELIVERY, // Backend не возвращает метод доставки
+        totalAmount = actualTotalAmount, // Используем исправленную сумму
+        deliveryMethod = DeliveryMethod.DELIVERY, // Backend пока не возвращает метод доставки
         deliveryAddress = this.deliveryAddress,
-        deliveryCost = this.deliveryFee,
-        paymentMethod = PaymentMethod.CARD_ON_DELIVERY, // Backend не возвращает метод оплаты
+        deliveryCost = actualDeliveryCost, // Используем исправленную стоимость
+        paymentMethod = PaymentMethod.CARD_ON_DELIVERY, // Backend НЕ возвращает paymentMethod в OrderDto
         customerPhone = this.contactPhone,
         customerName = this.contactName,
         notes = this.comment ?: "",
         createdAt = parseDateTime(this.createdAt),
         updatedAt = parseDateTime(this.updatedAt ?: this.createdAt),
         estimatedDeliveryTime = this.estimatedDeliveryTime?.let { parseDateTime(it) }
-    )
+    ).also { domainOrder ->
+        // Логируем результат преобразования
+        android.util.Log.d("OrderMappers", "✅ Создан Domain Order:")
+        android.util.Log.d("OrderMappers", "  Domain.id: ${domainOrder.id}")
+        android.util.Log.d("OrderMappers", "  Domain.totalAmount: ${domainOrder.totalAmount}")
+        android.util.Log.d("OrderMappers", "  Domain.deliveryCost: ${domainOrder.deliveryCost}")
+        android.util.Log.d("OrderMappers", "  Domain.grandTotal: ${domainOrder.grandTotal}")
+        android.util.Log.d("OrderMappers", "  Domain.items.size: ${domainOrder.items.size}")
+        domainOrder.items.forEachIndexed { index, item ->
+            android.util.Log.d("OrderMappers", "    Final Item ${index + 1}: ${item.productName} - ${item.quantity} × ${item.productPrice}₽ = ${item.totalPrice}₽")
+        }
+    }
 }
 
 /**
  * Преобразование OrderItemDto в OrderItem (Domain)
  */
 fun OrderItemDto.toDomain(): OrderItem {
+    // Диагностическое логирование
+    android.util.Log.d("OrderItemMappers", "🔄 Преобразование OrderItemDto в OrderItem:")
+    android.util.Log.d("OrderItemMappers", "  productName: '${this.productName}'")
+    android.util.Log.d("OrderItemMappers", "  price: ${this.price}")
+    android.util.Log.d("OrderItemMappers", "  productPrice: ${this.productPrice}")
+    android.util.Log.d("OrderItemMappers", "  quantity: ${this.quantity}")
+    
+    // 🔧 ФИКС: Используем productPrice (реальная цена) вместо price (скидочная цена)
+    val actualPrice = this.productPrice ?: this.price
+    android.util.Log.d("OrderItemMappers", "  📊 Выбранная цена: $actualPrice (productPrice=${this.productPrice}, price=${this.price})")
+    
     return OrderItem(
         id = this.id,
         productId = this.productId,
         productName = this.productName,
-        productPrice = this.price,
+        productPrice = actualPrice, // Используем реальную цену продукта
         quantity = this.quantity
     )
 }
@@ -156,13 +215,15 @@ fun createOrderRequest(
     deliveryAddress: String,
     contactName: String,
     contactPhone: String,
-    comment: String? = null
+    comment: String? = null,
+    paymentMethod: String = "CASH"
 ): CreateOrderRequest {
     return CreateOrderRequest(
         deliveryAddress = deliveryAddress,
         contactName = contactName,
         contactPhone = contactPhone,
-        comment = comment
+        comment = comment,
+        paymentMethod = paymentMethod
     )
 }
 
