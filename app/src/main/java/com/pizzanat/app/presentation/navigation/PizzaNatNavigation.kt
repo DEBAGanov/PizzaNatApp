@@ -419,19 +419,19 @@ fun PizzaNatNavigation(
             
             android.util.Log.d("OrderSuccess", "📋 Экран успеха заказа для ID: $orderId")
             
-            OrderSuccessScreen(
+                    OrderSuccessScreen(
                 orderId = orderId,
-                onNavigateToHome = {
-                    navController.navigate(PizzaNatRoutes.HOME) {
-                        popUpTo(PizzaNatRoutes.HOME) { inclusive = false }
-                    }
-                },
-                onViewOrderDetails = {
-                    navController.navigate(PizzaNatRoutes.PROFILE) {
-                        popUpTo(PizzaNatRoutes.HOME) { inclusive = false }
-                    }
-                }
-            )
+                        onNavigateToHome = {
+                            navController.navigate(PizzaNatRoutes.HOME) {
+                                popUpTo(PizzaNatRoutes.HOME) { inclusive = false }
+                            }
+                        },
+                        onViewOrderDetails = {
+                            navController.navigate(PizzaNatRoutes.PROFILE) {
+                                popUpTo(PizzaNatRoutes.HOME) { inclusive = false }
+                            }
+                        }
+                    )
         }
         
         // Экран уведомлений

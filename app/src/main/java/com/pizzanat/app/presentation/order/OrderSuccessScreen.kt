@@ -223,10 +223,10 @@ private fun OrderSuccessContent(
             )
             
             // Номер заказа
-            Text(
+                    Text(
                 text = "Номер заказа: #${order.id}",
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -253,31 +253,31 @@ private fun OrderSuccessContent(
                 )
                 .padding(horizontal = 16.dp)
                 .padding(top = 20.dp, bottom = 16.dp)
-        ) {
-            Button(
-                onClick = onNavigateToHome,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(28.dp),
-                colors = ButtonDefaults.buttonColors(
+            ) {
+                Button(
+                    onClick = onNavigateToHome,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = RoundedCornerShape(28.dp),
+                    colors = ButtonDefaults.buttonColors(
                     containerColor = CategoryPlateYellow,
-                    contentColor = Color.Black
+                        contentColor = Color.Black
                 ),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Home,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "На главную",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Home,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "На главную",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
         }
     }
 }
@@ -297,7 +297,7 @@ private fun ReceiptCard(order: Order) {
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             // Заголовок организации
-            Text(
+                Text(
                 text = "ДИМБО пицца",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
@@ -310,19 +310,19 @@ private fun ReceiptCard(order: Order) {
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
-            )
+                    )
             
-            Text(
+                    Text(
                 text = "Кассир: Система",
-                style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
-            )
+                    )
             
             Spacer(modifier = Modifier.height(8.dp))
             
             // Разделительная линия
-            Text(
+                Text(
                 text = "====================================",
                 style = MaterialTheme.typography.bodySmall.copy(
                     fontFamily = FontFamily.Monospace
@@ -344,7 +344,7 @@ private fun ReceiptCard(order: Order) {
             Spacer(modifier = Modifier.height(8.dp))
             
             // Разделительная линия
-            Text(
+                    Text(
                 text = "====================================",
                 style = MaterialTheme.typography.bodySmall.copy(
                     fontFamily = FontFamily.Monospace
@@ -359,8 +359,8 @@ private fun ReceiptCard(order: Order) {
                 label = "Товары:",
                 value = NumberFormat.getNumberInstance(Locale("ru", "RU")).format(order.totalAmount)
             )
-            
-            if (order.deliveryCost > 0) {
+                
+                if (order.deliveryCost > 0) {
                 ReceiptSummaryLine(
                     label = "Доставка:",
                     value = NumberFormat.getNumberInstance(Locale("ru", "RU")).format(order.deliveryCost)
@@ -413,7 +413,7 @@ private fun ReceiptCard(order: Order) {
                 },
                 style = MaterialTheme.typography.bodyLarge.copy(
                     fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold
                 ),
                 color = Color.Black,
                 modifier = Modifier.fillMaxWidth()
@@ -465,8 +465,8 @@ private fun ReceiptItem(
                 fontWeight = FontWeight.Medium
             ),
             modifier = Modifier.fillMaxWidth()
-        )
-        
+            )
+            
         // Количество и цена
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -517,31 +517,31 @@ private fun ReceiptSummaryLine(
 @Composable
 fun OrderSuccessScreenPreview() {
     PizzaNatTheme {
-        val sampleOrder = Order(
+    val sampleOrder = Order(
             id = 2,
-            userId = 1,
-            items = listOf(
-                OrderItem(
-                    id = 1,
-                    productId = 1,
+        userId = 1,
+        items = listOf(
+            OrderItem(
+                id = 1,
+                productId = 1,
                     productName = "Маргарита",
                     productPrice = 850.0,
                     quantity = 2,
                     totalPrice = 1700.0
-                ),
-                OrderItem(
-                    id = 2,
-                    productId = 2,
+            ),
+            OrderItem(
+                id = 2,
+                productId = 2,
                     productName = "Пепперони",
                     productPrice = 950.0,
                     quantity = 1,
                     totalPrice = 950.0
-                )
-            ),
+            )
+        ),
             status = OrderStatus.PENDING,
             totalAmount = 2650.0,
-            deliveryMethod = DeliveryMethod.DELIVERY,
-            deliveryAddress = "ул. Пушкина, д. 10, кв. 5",
+        deliveryMethod = DeliveryMethod.DELIVERY,
+        deliveryAddress = "ул. Пушкина, д. 10, кв. 5",
             deliveryCost = 200.0,
             paymentMethod = PaymentMethod.SBP,
             customerPhone = "+7 900 123-45-67",

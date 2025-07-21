@@ -12,6 +12,8 @@ import com.pizzanat.app.domain.entities.SimpleAddressSuggestion
 import com.pizzanat.app.domain.entities.CartItem
 import com.pizzanat.app.domain.usecases.address.GetAddressSuggestionsUseCase
 import com.pizzanat.app.domain.usecases.cart.GetCartItemsUseCase
+import com.pizzanat.app.domain.usecases.user.GetUserDefaultDataUseCase
+import com.pizzanat.app.domain.usecases.user.SaveUserPreferencesUseCase
 import com.pizzanat.app.presentation.components.isValidPhoneNumber
 import com.pizzanat.app.presentation.components.normalizePhoneForApi
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -55,7 +57,9 @@ data class OrderData(
 @HiltViewModel
 class CheckoutViewModel @Inject constructor(
     private val getCartItemsUseCase: GetCartItemsUseCase,
-    private val getAddressSuggestionsUseCase: GetAddressSuggestionsUseCase
+    private val getAddressSuggestionsUseCase: GetAddressSuggestionsUseCase,
+    private val getUserDefaultDataUseCase: GetUserDefaultDataUseCase,
+    private val saveUserPreferencesUseCase: SaveUserPreferencesUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CheckoutUiState())
@@ -67,6 +71,7 @@ class CheckoutViewModel @Inject constructor(
 
     init {
         loadCartItems()
+        loadUserDefaultData()
     }
 
     private fun loadCartItems() {
@@ -87,11 +92,77 @@ class CheckoutViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Загрузка данных пользователя по умолчанию для автозаполнения
+     */
+    private fun loadUserDefaultData() {
+        viewModelScope.launch {
+            try {
+                android.util.Log.d("CheckoutViewModel", "🔄 Загрузка данных пользователя для автозаполнения...")
+                
+                val currentState = _uiState.value
+                android.util.Log.d("CheckoutViewModel", "📋 Текущее состояние полей:")
+                android.util.Log.d("CheckoutViewModel", "  Текущий адрес: '${currentState.deliveryAddress}'")
+                android.util.Log.d("CheckoutViewModel", "  Текущий телефон: '${currentState.customerPhone}'")
+                android.util.Log.d("CheckoutViewModel", "  Текущее имя: '${currentState.customerName}'")
+                
+                val result = getUserDefaultDataUseCase()
+                if (result.isSuccess) {
+                    val defaultData = result.getOrNull()
+                    if (defaultData != null) {
+                        android.util.Log.d("CheckoutViewModel", "✅ Полученные данные по умолчанию:")
+                        android.util.Log.d("CheckoutViewModel", "  Имя: '${defaultData.customerName}'")
+                        android.util.Log.d("CheckoutViewModel", "  Телефон: '${defaultData.customerPhone}'")
+                        android.util.Log.d("CheckoutViewModel", "  Адрес: '${defaultData.deliveryAddress}'")
+                        
+                        // Условия автозаполнения
+                        val shouldFillAddress = currentState.deliveryAddress.isBlank() && defaultData.deliveryAddress.isNotBlank()
+                        val shouldFillPhone = (currentState.customerPhone.isBlank() || currentState.customerPhone == "+7") && defaultData.customerPhone.isNotBlank() && defaultData.customerPhone != "+7"
+                        val shouldFillName = currentState.customerName.isBlank() && defaultData.customerName.isNotBlank()
+                        
+                        android.util.Log.d("CheckoutViewModel", "🔍 Условия заполнения:")
+                        android.util.Log.d("CheckoutViewModel", "  Заполнить адрес: $shouldFillAddress")
+                        android.util.Log.d("CheckoutViewModel", "  Заполнить телефон: $shouldFillPhone")
+                        android.util.Log.d("CheckoutViewModel", "  Заполнить имя: $shouldFillName")
+                        
+                        // Обновляем состояние только если поля пустые
+                        _uiState.value = _uiState.value.copy(
+                            deliveryAddress = if (shouldFillAddress) defaultData.deliveryAddress else currentState.deliveryAddress,
+                            customerPhone = if (shouldFillPhone) defaultData.customerPhone else currentState.customerPhone,
+                            customerName = if (shouldFillName) defaultData.customerName else currentState.customerName
+                        )
+                        
+                        val finalState = _uiState.value
+                        android.util.Log.d("CheckoutViewModel", "🎯 Финальное состояние полей:")
+                        android.util.Log.d("CheckoutViewModel", "  Итоговый адрес: '${finalState.deliveryAddress}'")
+                        android.util.Log.d("CheckoutViewModel", "  Итоговый телефон: '${finalState.customerPhone}'")
+                        android.util.Log.d("CheckoutViewModel", "  Итоговое имя: '${finalState.customerName}'")
+                        
+                    } else {
+                        android.util.Log.w("CheckoutViewModel", "⚠️ Данные по умолчанию пустые")
+                    }
+                } else {
+                    android.util.Log.w("CheckoutViewModel", "⚠️ Ошибка загрузки данных по умолчанию: ${result.exceptionOrNull()?.message}")
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("CheckoutViewModel", "❌ Исключение при автозаполнении: ${e.message}")
+                // Не критично - форма остается с пустыми полями
+            }
+        }
+    }
+
     fun updateDeliveryAddress(address: String) {
         _uiState.value = _uiState.value.copy(
             deliveryAddress = address,
             addressError = null
         )
+        
+        // Сохраняем адрес как предпочтение пользователя (с задержкой чтобы не спамить)
+        if (address.isNotBlank() && address.length > 10) {
+            viewModelScope.launch {
+                saveUserPreferencesUseCase.saveLastDeliveryAddress(address)
+            }
+        }
     }
 
     fun updateCustomerPhone(phone: String) {
@@ -99,6 +170,13 @@ class CheckoutViewModel @Inject constructor(
             customerPhone = phone,
             phoneError = null
         )
+        
+        // Сохраняем телефон как предпочтение пользователя
+        if (phone.isNotBlank() && phone != "+7" && phone.length >= 10) {
+            viewModelScope.launch {
+                saveUserPreferencesUseCase.saveLastCustomerPhone(phone)
+            }
+        }
     }
 
     fun updateCustomerName(name: String) {
@@ -106,6 +184,13 @@ class CheckoutViewModel @Inject constructor(
             customerName = name,
             nameError = null
         )
+        
+        // Сохраняем имя как предпочтение пользователя
+        if (name.isNotBlank() && name.length >= 2) {
+            viewModelScope.launch {
+                saveUserPreferencesUseCase.saveLastCustomerName(name)
+            }
+        }
     }
 
     fun updateNotes(notes: String) {
@@ -171,6 +256,16 @@ class CheckoutViewModel @Inject constructor(
             customerName = currentState.customerName,
             notes = currentState.notes
         )
+        
+        // Сохраняем финальные данные заказа как предпочтения пользователя
+        viewModelScope.launch {
+            android.util.Log.d("CheckoutViewModel", "💾 Сохраняем финальные данные заказа как предпочтения")
+            saveUserPreferencesUseCase.saveOrderData(
+                deliveryAddress = currentState.deliveryAddress,
+                customerPhone = currentState.customerPhone,
+                customerName = currentState.customerName
+            )
+        }
     }
 
     fun clearError() {
@@ -235,5 +330,13 @@ class CheckoutViewModel @Inject constructor(
             isLoadingAddressSuggestions = false,
             addressSuggestionsError = null
         )
+    }
+    
+    /**
+     * Принудительное обновление данных по умолчанию (для кнопки "Заполнить автоматически")
+     */
+    fun reloadUserDefaultData() {
+        android.util.Log.d("CheckoutViewModel", "🔄 Принудительное обновление автозаполнения...")
+        loadUserDefaultData()
     }
 } 
