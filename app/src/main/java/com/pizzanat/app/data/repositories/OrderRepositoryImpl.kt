@@ -226,36 +226,78 @@ class OrderRepositoryImpl @Inject constructor(
                 PaymentMethod.CARD_ON_DELIVERY -> "CASH"
             }
             
+            // Преобразуем DeliveryMethod в русские значения для backend API
+            val deliveryTypeString = when (deliveryMethod) {
+                DeliveryMethod.DELIVERY -> "Доставка курьером"
+                DeliveryMethod.PICKUP -> "Самовывоз"
+            }
+            
             // Backend автоматически берет товары из корзины пользователя
             val createOrderRequest = createOrderRequest(
                 deliveryAddress = deliveryAddress,
                 contactName = customerName,
                 contactPhone = normalizedPhone,
                 comment = notes,
-                paymentMethod = paymentMethodString
+                paymentMethod = paymentMethodString,
+                deliveryType = deliveryTypeString
             )
             
-            Log.d("OrderRepository", "Создание заказа через API:")
-            Log.d("OrderRepository", "  deliveryAddress: $deliveryAddress")
-            Log.d("OrderRepository", "  contactName: $customerName")
-            Log.d("OrderRepository", "  paymentMethod: ${paymentMethod.displayName} ($paymentMethodString)")
-            Log.d("OrderRepository", "  deliveryMethod: ${deliveryMethod.displayName}")
-            Log.d("OrderRepository", "  originalPhone: '$customerPhone', normalized: '$normalizedPhone'")
+            Log.d("OrderRepository", "📤 ДЕТАЛЬНАЯ ДИАГНОСТИКА СОЗДАНИЯ ЗАКАЗА:")
+            Log.d("OrderRepository", "  📋 CreateOrderRequest содержит:")
+            Log.d("OrderRepository", "    deliveryAddress: '${createOrderRequest.deliveryAddress}'")
+            Log.d("OrderRepository", "    contactName: '${createOrderRequest.contactName}'")
+            Log.d("OrderRepository", "    contactPhone: '${createOrderRequest.contactPhone}'")
+            Log.d("OrderRepository", "    comment: '${createOrderRequest.comment}'")
+            Log.d("OrderRepository", "    paymentMethod: '${createOrderRequest.paymentMethod}'")
+            Log.d("OrderRepository", "    deliveryType: '${createOrderRequest.deliveryType}' ← ИСПРАВЛЕНО! (русские значения)")
+            
+            // 🔍 Логируем JSON запроса
+            try {
+                val gson = com.google.gson.Gson()
+                val jsonRequest = gson.toJson(createOrderRequest)
+                Log.d("OrderRepository", "📤 JSON запроса в backend:")
+                Log.d("OrderRepository", jsonRequest)
+            } catch (e: Exception) {
+                Log.w("OrderRepository", "⚠️ Не удалось сериализовать запрос в JSON: ${e.message}")
+            }
+            
+            Log.d("OrderRepository", "🚀 Отправляем запрос в backend API...")
             
             val apiResult = safeApiCall { orderApiService.createOrder(createOrderRequest) }
+            
+            Log.d("OrderRepository", "📡 ПОЛУЧЕН ОТВЕТ ОТ BACKEND:")
+            Log.d("OrderRepository", "  success: ${apiResult.isSuccess}")
             
             if (apiResult.isSuccess) {
                 val orderDto = apiResult.getOrNull()
                 if (orderDto != null) {
-                    Log.d("OrderRepository", "Заказ создан через API: ${orderDto.id}")
+                    Log.d("OrderRepository", "✅ Заказ создан через API: ${orderDto.id}")
+                    Log.d("OrderRepository", "🔍 ДИАГНОСТИКА СОЗДАННОГО ЗАКАЗА:")
+                    Log.d("OrderRepository", "  📋 Backend вернул OrderDto:")
+                    Log.d("OrderRepository", "    id: ${orderDto.id}")
+                    Log.d("OrderRepository", "    deliveryAddress: '${orderDto.deliveryAddress}'")
+                    Log.d("OrderRepository", "    deliveryFee: ${orderDto.deliveryFee} ₽")
+                    Log.d("OrderRepository", "    contactName: '${orderDto.contactName}'")
+                    Log.d("OrderRepository", "    contactPhone: '${orderDto.contactPhone}'")
+                    
+                    // 🎯 ИСПРАВЛЕНО: Теперь backend должен обработать deliveryType!
+                    Log.i("OrderRepository", "✅ Отправлен корректный deliveryType: '$deliveryTypeString'")
+                    Log.i("OrderRepository", "📋 Backend получил поле 'deliveryType' с русскими значениями")
+                    Log.i("OrderRepository", "🔍 Ожидаем в БД: delivery_type='$deliveryTypeString', delivery_cost=${if (deliveryMethod == DeliveryMethod.DELIVERY) "200.0" else "0.0"}")
+                    
                     Result.success(orderDto.id)
                 } else {
-                    Log.w("OrderRepository", "Пустой ответ API при создании заказа")
+                    Log.w("OrderRepository", "⚠️ Пустой ответ API при создании заказа")
                     Result.failure(Exception("Empty API response"))
                 }
             } else {
-                Log.w("OrderRepository", "Ошибка API при создании заказа: ${apiResult.getErrorMessage()}")
-                Result.failure(Exception("API Error: ${apiResult.getErrorMessage()}"))
+                val errorMessage = apiResult.getErrorMessage()
+                Log.e("OrderRepository", "❌ Ошибка API при создании заказа: $errorMessage")
+                Log.e("OrderRepository", "❌ Возможные причины:")
+                Log.e("OrderRepository", "   1. Backend не принимает значения deliveryType='$deliveryTypeString'")
+                Log.e("OrderRepository", "   2. Проблема валидации в backend")
+                Log.e("OrderRepository", "   3. Ошибка сохранения в базе данных")
+                Result.failure(Exception("API Error: $errorMessage"))
             }
         } catch (e: Exception) {
             Log.e("OrderRepository", "Исключение при создании заказа: ${e.message}")

@@ -82,7 +82,9 @@ data class CreateOrderRequest(
     @SerializedName("notes")
     val notes: String? = null,
     @SerializedName("paymentMethod")
-    val paymentMethod: String = "CASH"
+    val paymentMethod: String = "CASH",
+    @SerializedName("deliveryType")
+    val deliveryType: String = "Доставка курьером" // "Доставка курьером" или "Самовывоз"
 )
 
 data class CreateOrderResponse(

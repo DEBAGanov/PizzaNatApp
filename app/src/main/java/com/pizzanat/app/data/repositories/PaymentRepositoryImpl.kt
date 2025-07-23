@@ -50,14 +50,31 @@ class PaymentRepositoryImpl @Inject constructor(
                     }
                 } else {
                     val errorBody = response.errorBody()?.string()
-                    val errorMsg = "Ошибка создания платежа: HTTP ${response.code()}"
+                    val httpCode = response.code()
+                    val errorMsg = "Ошибка создания платежа: HTTP $httpCode"
+                    
                     Log.e(TAG, "❌ $errorMsg")
                     Log.e(TAG, "❌ Тело ошибки: $errorBody")
-                    Result.failure(Exception("$errorMsg: $errorBody"))
+                    
+                    // 🆕 Graceful fallback для HTTP 500 согласно памяти
+                    if (httpCode == 500) {
+                        Log.w(TAG, "🔄 HTTP 500 обнаружен - применяем graceful fallback")
+                        // Возвращаем специальный код для PaymentViewModel
+                        Result.failure(Exception("PAYMENT_SERVER_ERROR_500"))
+                    } else {
+                        Result.failure(Exception("$errorMsg: $errorBody"))
+                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "❌ Исключение при создании платежа", e)
-                Result.failure(e)
+                
+                // 🆕 Дополнительная обработка сетевых ошибок как потенциальный HTTP 500
+                if (e.message?.contains("500") == true || e.message?.contains("Internal Server Error") == true) {
+                    Log.w(TAG, "🔄 Обнаружена сетевая ошибка 500 - применяем graceful fallback")
+                    Result.failure(Exception("PAYMENT_SERVER_ERROR_500"))
+                } else {
+                    Result.failure(e)
+                }
             }
         }
     

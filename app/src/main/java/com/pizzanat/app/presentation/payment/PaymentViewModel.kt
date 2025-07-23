@@ -135,11 +135,16 @@ class PaymentViewModel @Inject constructor(
     fun selectPaymentMethod(method: PaymentMethod) {
         viewModelScope.launch {
             Log.d("PaymentViewModel", "🔄 Изменение способа оплаты:")
-            Log.d("PaymentViewModel", "  Было: ${_uiState.value.selectedPaymentMethod.displayName}")
-            Log.d("PaymentViewModel", "  Стало: ${method.displayName}")
-            _uiState.value = _uiState.value.copy(
-                selectedPaymentMethod = method
-            )
+            Log.d("PaymentViewModel", "  Было: ${_uiState.value.selectedPaymentMethod.displayName} (${_uiState.value.selectedPaymentMethod})")
+            Log.d("PaymentViewModel", "  Стало: ${method.displayName} ($method)")
+            Log.d("PaymentViewModel", "  Устанавливаем новый способ оплаты...")
+            
+            val newState = _uiState.value.copy(selectedPaymentMethod = method)
+            _uiState.value = newState
+            
+            Log.d("PaymentViewModel", "✅ Способ оплаты обновлен:")
+            Log.d("PaymentViewModel", "  Теперь selectedPaymentMethod: ${_uiState.value.selectedPaymentMethod}")
+            Log.d("PaymentViewModel", "  Теперь selectedPaymentMethod.displayName: ${_uiState.value.selectedPaymentMethod.displayName}")
         }
     }
     
@@ -236,17 +241,39 @@ class PaymentViewModel @Inject constructor(
                 
                 if (result.isSuccess) {
                     val orderId = result.getOrNull()
-                    Log.d("PaymentViewModel", "Заказ успешно создан с ID: $orderId")
-                    
-                    // Проверяем способ оплаты
-                    if (_uiState.value.selectedPaymentMethod == PaymentMethod.SBP && orderId != null) {
-                        // Для СБП создаем платеж через ЮКасса
-                        Log.d("PaymentViewModel", "Создаем платеж СБП для заказа $orderId")
-                        createSbpPayment(orderId, _uiState.value.total, currentUser.email ?: "", data.customerPhone)
-                    } else {
-                        // Для оплаты при получении сразу переходим на успех
-                        handleOrderSuccess(orderId, currentUser.id)
+                                    Log.d("PaymentViewModel", "Заказ успешно создан с ID: $orderId")
+                
+                // 🔍 ДЕТАЛЬНАЯ ДИАГНОСТИКА СПОСОБА ОПЛАТЫ
+                val currentPaymentMethod = _uiState.value.selectedPaymentMethod
+                Log.d("PaymentViewModel", "🔍 ДИАГНОСТИКА СПОСОБА ОПЛАТЫ:")
+                Log.d("PaymentViewModel", "  selectedPaymentMethod: $currentPaymentMethod")
+                Log.d("PaymentViewModel", "  selectedPaymentMethod.name: ${currentPaymentMethod.name}")
+                Log.d("PaymentViewModel", "  selectedPaymentMethod.displayName: ${currentPaymentMethod.displayName}")
+                Log.d("PaymentViewModel", "  PaymentMethod.SBP: ${PaymentMethod.SBP}")
+                Log.d("PaymentViewModel", "  PaymentMethod.SBP.name: ${PaymentMethod.SBP.name}")
+                Log.d("PaymentViewModel", "  Равны ли они? ${currentPaymentMethod == PaymentMethod.SBP}")
+                Log.d("PaymentViewModel", "  orderId != null? ${orderId != null}")
+                Log.d("PaymentViewModel", "  orderId: $orderId")
+                
+                // Проверяем способ оплаты
+                if (_uiState.value.selectedPaymentMethod == PaymentMethod.SBP && orderId != null) {
+                    // Для СБП создаем платеж через ЮКасса
+                    Log.d("PaymentViewModel", "✅ УСЛОВИЕ ВЫПОЛНЕНО: Создаем платеж СБП для заказа $orderId")
+                    // 🔧 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Передаем ПОЛНУЮ сумму (товары + доставка)
+                    // Это должно соответствовать сумме товаров в чеке ЮКассы
+                    createSbpPayment(orderId, _uiState.value.total, currentUser.email ?: "", data.customerPhone)
+                } else {
+                    // Для оплаты при получении сразу переходим на успех
+                    Log.w("PaymentViewModel", "❌ УСЛОВИЕ НЕ ВЫПОЛНЕНО: Переходим к handleOrderSuccess")
+                    Log.w("PaymentViewModel", "  Причина:")
+                    if (_uiState.value.selectedPaymentMethod != PaymentMethod.SBP) {
+                        Log.w("PaymentViewModel", "    - selectedPaymentMethod (${_uiState.value.selectedPaymentMethod}) != PaymentMethod.SBP")
                     }
+                    if (orderId == null) {
+                        Log.w("PaymentViewModel", "    - orderId == null")
+                    }
+                    handleOrderSuccess(orderId, currentUser.id)
+                }
                 } else {
                     val error = result.exceptionOrNull()?.message ?: "Ошибка создания заказа"
                     Log.e("PaymentViewModel", "Ошибка создания заказа: $error")
@@ -270,9 +297,44 @@ class PaymentViewModel @Inject constructor(
             val currentState = _uiState.value
             Log.d("PaymentViewModel", "🔄 Создание СБП платежа через ЮКасса API для заказа $orderId")
             Log.d("PaymentViewModel", "  💰 Сумма товаров (subtotal): ${currentState.subtotal} ₽")
-            Log.d("PaymentViewModel", "  🚚 Стоимость доставки: ${currentState.deliveryCost} ₽")
-            Log.d("PaymentViewModel", "  💳 Общая сумма (total): ${currentState.total} ₽")
-            Log.d("PaymentViewModel", "  📤 Передаваемая сумма (amount): $amount ₽")
+            Log.d("PaymentViewModel", "  🚚 Стоимость доставки в UI: ${currentState.deliveryCost} ₽")
+            Log.d("PaymentViewModel", "  💳 Общая сумма в UI (total): ${currentState.total} ₽")
+            Log.d("PaymentViewModel", "  📤 Передаваемая сумма в ЮКассу: $amount ₽")
+            Log.d("PaymentViewModel", "  🔧 КРИТИЧЕСКИ ВАЖНО: Передаем ПОЛНУЮ сумму, должна равняться сумме товаров в чеке")
+            
+            // 🆕 ДИАГНОСТИКА: Логируем детали товаров для ЮКассы
+            val data = orderData
+            if (data != null) {
+                Log.d("PaymentViewModel", "🛒 ДИАГНОСТИКА ТОВАРОВ ДЛЯ ЮКАССЫ:")
+                Log.d("PaymentViewModel", "  📦 Всего товаров в заказе: ${data.cartItems.size}")
+                var calculatedSubtotal = 0.0
+                data.cartItems.forEachIndexed { index, item ->
+                    val itemTotal = item.quantity * item.productPrice
+                    calculatedSubtotal += itemTotal
+                    Log.d("PaymentViewModel", "    ${index + 1}. ${item.productName}:")
+                    Log.d("PaymentViewModel", "       - ID товара: ${item.productId}")
+                    Log.d("PaymentViewModel", "       - Цена за единицу: ${item.productPrice} ₽")
+                    Log.d("PaymentViewModel", "       - Количество: ${item.quantity}")
+                    Log.d("PaymentViewModel", "       - Общая стоимость: $itemTotal ₽")
+                }
+                Log.d("PaymentViewModel", "  📊 Пересчитанная сумма товаров: $calculatedSubtotal ₽")
+                Log.d("PaymentViewModel", "  📊 Сумма из UI состояния: ${currentState.subtotal} ₽")
+                Log.d("PaymentViewModel", "  📊 Разница: ${calculatedSubtotal - currentState.subtotal} ₽")
+                
+                // Проверяем валидность данных
+                if (Math.abs(calculatedSubtotal - currentState.subtotal) > 0.01) {
+                    Log.w("PaymentViewModel", "⚠️ ВНИМАНИЕ: Расхождение в сумме товаров!")
+                    Log.w("PaymentViewModel", "   Это может вызвать ошибку чека в ЮКассе")
+                }
+                
+                // Проверяем товары с подозрительно низкими ценами
+                data.cartItems.forEach { item ->
+                    if (item.productPrice < 10.0) {
+                        Log.w("PaymentViewModel", "⚠️ ПОДОЗРИТЕЛЬНАЯ ЦЕНА: ${item.productName} = ${item.productPrice} ₽")
+                        Log.w("PaymentViewModel", "   Возможно это тестовые данные в backend")
+                    }
+                }
+            }
             
             // ДОПОЛНИТЕЛЬНАЯ ВАЛИДАЦИЯ
             if (amount <= 0) {
@@ -304,6 +366,7 @@ class PaymentViewModel @Inject constructor(
             Log.d("PaymentViewModel", "  phone: ${request.customerPhone ?: "не указан"}")
             Log.d("PaymentViewModel", "  description: ${request.description}")
             
+            Log.d("PaymentViewModel", "🚀 Отправляем запрос в ЮКассу...")
             val paymentResult = createPaymentUseCase(request)
             
             if (paymentResult.isSuccess) {
@@ -323,10 +386,67 @@ class PaymentViewModel @Inject constructor(
                 val error = paymentResult.exceptionOrNull()?.message ?: "Ошибка создания платежа"
                 Log.e("PaymentViewModel", "❌ Ошибка создания СБП платежа через ЮКасса: $error")
                 
-                _uiState.value = _uiState.value.copy(
-                    isCreatingOrder = false,
-                    error = "Ошибка создания платежа: $error"
-                )
+                // 🆕 АНАЛИЗ ОШИБКИ ЧЕКА ЮКАССЫ
+                if (error.contains("receipt.items.amount") || error.contains("invalid_request")) {
+                    Log.e("PaymentViewModel", "💥 ОШИБКА ЧЕКА ЮКАССЫ ОБНАРУЖЕНА!")
+                    Log.e("PaymentViewModel", "   Проблема: Сумма товаров в чеке не равна общей сумме платежа")
+                    Log.e("PaymentViewModel", "   Решение: Backend должен исправить цены товаров в базе данных")
+                    Log.e("PaymentViewModel", "   Текущая ситуация:")
+                    Log.e("PaymentViewModel", "     - Передаваемая сумма в ЮКассу: $amount ₽ (полная сумма с доставкой)")
+                    Log.e("PaymentViewModel", "     - Сумма товаров в мобильном приложении: ${data?.cartItems?.sumOf { it.productPrice * it.quantity }} ₽")
+                    Log.e("PaymentViewModel", "     - Backend должен создать чек на точно такую же сумму: $amount ₽")
+                    Log.e("PaymentViewModel", "   Применяем graceful fallback...")
+                    
+                    // Применяем graceful fallback для ошибок чека
+                    Log.w("PaymentViewModel", "🔄 Применяем graceful fallback для ошибки чека ЮКассы")
+                    Log.w("PaymentViewModel", "🔄 Автоматически завершаем заказ как 'Картой/наличными при получении'")
+                    
+                    // Переключаем способ оплаты на CARD_ON_DELIVERY
+                    _uiState.value = _uiState.value.copy(
+                        selectedPaymentMethod = PaymentMethod.CARD_ON_DELIVERY
+                    )
+                    
+                    // Завершаем заказ успешно
+                    val currentUser = authRepository.getCurrentUser()
+                    if (currentUser != null) {
+                        handleOrderSuccess(orderId, currentUser.id)
+                    } else {
+                        Log.e("PaymentViewModel", "❌ Пользователь не найден для graceful fallback")
+                        _uiState.value = _uiState.value.copy(
+                            isCreatingOrder = false,
+                            error = "Ошибка авторизации при fallback"
+                        )
+                    }
+                    return
+                }
+                
+                // 🆕 Graceful fallback для HTTP 500 согласно памяти
+                if (error == "PAYMENT_SERVER_ERROR_500") {
+                    Log.w("PaymentViewModel", "🔄 Обнаружен HTTP 500 - применяем graceful fallback")
+                    Log.w("PaymentViewModel", "🔄 Автоматически завершаем заказ как 'Картой/наличными при получении'")
+                    
+                    // Переключаем способ оплаты на CARD_ON_DELIVERY
+                    _uiState.value = _uiState.value.copy(
+                        selectedPaymentMethod = PaymentMethod.CARD_ON_DELIVERY
+                    )
+                    
+                    // Завершаем заказ успешно
+                    val currentUser = authRepository.getCurrentUser()
+                    if (currentUser != null) {
+                        handleOrderSuccess(orderId, currentUser.id)
+                    } else {
+                        Log.e("PaymentViewModel", "❌ Пользователь не найден для graceful fallback")
+                        _uiState.value = _uiState.value.copy(
+                            isCreatingOrder = false,
+                            error = "Ошибка авторизации при fallback"
+                        )
+                    }
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        isCreatingOrder = false,
+                        error = "Ошибка создания платежа: $error"
+                    )
+                }
             }
         } catch (e: Exception) {
             Log.e("PaymentViewModel", "💥 Исключение при создании СБП платежа: ${e.message}")

@@ -216,14 +216,16 @@ fun createOrderRequest(
     contactName: String,
     contactPhone: String,
     comment: String? = null,
-    paymentMethod: String = "CASH"
+    paymentMethod: String = "CASH",
+    deliveryType: String = "Доставка курьером"
 ): CreateOrderRequest {
     return CreateOrderRequest(
         deliveryAddress = deliveryAddress,
         contactName = contactName,
         contactPhone = contactPhone,
         comment = comment,
-        paymentMethod = paymentMethod
+        paymentMethod = paymentMethod,
+        deliveryType = deliveryType
     )
 }
 

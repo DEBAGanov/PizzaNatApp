@@ -16,7 +16,7 @@ android {
         applicationId = "com.pizzanat.app"
         minSdk = 25
         targetSdk = 35
-        versionCode = 2
+        versionCode = 3
         versionName = "1.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

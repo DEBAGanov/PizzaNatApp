@@ -16,6 +16,7 @@ interface PaymentApiService {
     
     /**
      * Создание платежа через ЮКасса
+     * Соответствует: POST /api/v1/payments/yookassa/create
      */
     @POST("payments/yookassa/create")
     suspend fun createPayment(
@@ -24,6 +25,7 @@ interface PaymentApiService {
     
     /**
      * Получение информации о платеже
+     * Соответствует: GET /api/v1/payments/yookassa/{paymentId}
      */
     @GET("payments/yookassa/{paymentId}")
     suspend fun getPayment(
@@ -32,6 +34,7 @@ interface PaymentApiService {
     
     /**
      * Получение списка платежей заказа
+     * Соответствует: GET /api/v1/payments/yookassa/{orderId}
      */
     @GET("payments/yookassa/order/{orderId}")
     suspend fun getOrderPayments(
@@ -40,9 +43,19 @@ interface PaymentApiService {
     
     /**
      * Получение списка банков СБП
+     * Соответствует: GET /api/v1/payments/yookassa/sbp-banks (ИСПРАВЛЕНО: было sbp/banks)
      */
-    @GET("payments/yookassa/sbp/banks")
+    @GET("payments/yookassa/sbp-banks")
     suspend fun getSbpBanks(): Response<List<SbpBankDto>>
+    
+    /**
+     * Упрощенный API для мобильных приложений
+     * Соответствует: POST /api/v1/mobile/payments/create
+     */
+    @POST("mobile/payments/create")
+    suspend fun createMobilePayment(
+        @Body request: CreatePaymentRequestDto
+    ): Response<PaymentDto>
     
     /**
      * Health check ЮКасса
