@@ -382,10 +382,10 @@ private fun FoxCategoryCard(
             FoxCircularCategoryImage(
                 imageUrl = category.imageUrl,
                 contentDescription = category.name,
-                size = 80.dp
+                size = 114.dp
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Название категории
             Text(

@@ -317,6 +317,11 @@ fun PizzaNatNavigation(
         composable(PizzaNatRoutes.CHECKOUT) {
             CheckoutScreen(
                 onNavigateBack = { navController.navigateUp() },
+                onNavigateToHome = {
+                    navController.navigate(PizzaNatRoutes.HOME) {
+                        popUpTo(PizzaNatRoutes.HOME) { inclusive = false }
+                    }
+                },
                 onNavigateToPayment = { orderTotal ->
                     navController.navigate(PizzaNatRoutes.payment(orderTotal))
                 }

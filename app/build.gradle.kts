@@ -46,6 +46,11 @@ android {
             buildConfigField("String", "BASE_API_URL", "\"https://api.dimbopizza.ru/api/v1/\"")
             buildConfigField("String", "ENVIRONMENT", "\"PRODUCTION\"")
             buildConfigField("boolean", "USE_MOCK_DATA", "false")
+            
+            // Включаем отладочные символы для нативного кода
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
         }
 
         create("staging") {
@@ -60,6 +65,24 @@ android {
             buildConfigField("String", "BASE_API_URL", "\"https://api.dimbopizza.ru/api/v1/\"")
             buildConfigField("String", "ENVIRONMENT", "\"STAGING\"")
             buildConfigField("boolean", "USE_MOCK_DATA", "false")
+            
+            // Включаем отладочные символы для нативного кода
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
+        }
+    }
+
+    // Настройки для Android App Bundle с отладочными символами
+    bundle {
+        density {
+            enableSplit = true
+        }
+        abi {
+            enableSplit = true
+        }
+        language {
+            enableSplit = false
         }
     }
 
@@ -89,6 +112,14 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+
+    // Настройки для нативного кода и символьных файлов
+    androidComponents {
+        onVariants(selector().withBuildType("release")) { variant ->
+            // Настройки для включения символьных файлов в bundle
+            variant.packaging.resources.pickFirsts.add("**/libc++_shared.so")
         }
     }
 }

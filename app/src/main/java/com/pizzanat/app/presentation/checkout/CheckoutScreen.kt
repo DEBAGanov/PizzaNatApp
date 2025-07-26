@@ -46,6 +46,7 @@ import com.pizzanat.app.domain.entities.SimpleAddressSuggestion
 @Composable
 fun CheckoutScreen(
     onNavigateBack: () -> Unit = {},
+    onNavigateToHome: () -> Unit = {},
     onNavigateToPayment: (Double) -> Unit = {},
     viewModel: CheckoutViewModel = hiltViewModel()
 ) {
@@ -68,7 +69,7 @@ fun CheckoutScreen(
                 LoadingContent()
             }
             uiState.cartItems.isEmpty() -> {
-                EmptyCartContent(onNavigateBack)
+                EmptyCartContent(onNavigateToHome)
             }
             else -> {
                 CheckoutContent(
@@ -165,7 +166,7 @@ private fun LoadingContent() {
 }
 
 @Composable
-private fun EmptyCartContent(onNavigateBack: () -> Unit) {
+private fun EmptyCartContent(onNavigateToHome: () -> Unit) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -204,7 +205,7 @@ private fun EmptyCartContent(onNavigateBack: () -> Unit) {
                 )
                 
                 Button(
-                    onClick = onNavigateBack,
+                    onClick = onNavigateToHome,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary

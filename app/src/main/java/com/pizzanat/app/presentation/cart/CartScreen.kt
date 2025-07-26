@@ -182,12 +182,12 @@ private fun CartTopBar(
                         showClearDialog = false
                     }
                 ) {
-                    Text("Очистить")
+                    Text("Очистить", color = Color.Black)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showClearDialog = false }) {
-                    Text("Отмена")
+                    Text("Отмена", color = Color.Black)
                 }
             }
         )
