@@ -382,7 +382,7 @@ private fun FoxCategoryCard(
             FoxCircularCategoryImage(
                 imageUrl = category.imageUrl,
                 contentDescription = category.name,
-                size = 114.dp
+                size = 100.dp
             )
 
             Spacer(modifier = Modifier.height(16.dp))
